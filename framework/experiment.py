@@ -2,10 +2,13 @@ import os
 import datetime
 import pickle
 import hashlib
+import json
 from collections import OrderedDict
 
 import logger
-import utils
+
+_logger = logger.get_logger()
+
 
 class Experiment(object):
     def __init__(self, name, data_sources, working_dir, params=None):
@@ -15,7 +18,6 @@ class Experiment(object):
         self.params = params
         self.results = OrderedDict()
         self._calculate_md5()
-        self._logger = logger.get_logger()
 
     def _calculate_md5(self):
         if type(self.data_sources) == tuple:
@@ -25,6 +27,9 @@ class Experiment(object):
                 self._md5 = hash_obj.hexdigest()
         else:
             self._md5 = hashlib.md5(open(self.data_sources, 'rb').read()).hexdigest()
+
+    def cleanup(self):
+        raise NotImplementedError
 
     def task(self):
         raise NotImplementedError
@@ -40,16 +45,22 @@ class Experiment(object):
         while i < repetitions:
             self.repetition_dir = os.path.join(self.experiment_dir, str(i))
             os.mkdir(self.repetition_dir)
-            self._logger.info('Beginning repetition #%d' % i)
+            _logger.info('Beginning repetition #%d' % i)
             try:
-                utils.ros_kill_all()
-                self.task() # TODO: on theory, this should be timeout protected...
+                self.cleanup()
+                self.task()
                 if self.is_valid():
-                    self._logger.info('Valid execution')
+                    _logger.info('Valid execution')
                     i += 1
                 else:
-                    self._logger.info('Invalid execution')
+                    _logger.info('Invalid execution')
             except Exception as e:
-                self._logger.error('Encountered an error: %s' % e)
-        # with open(os.path.join(self.experiment_dir, self.name), 'wb') as out_file:
-        #     pickle.dump(self, out_file)
+                _logger.error('Encountered an error: %s' % e)
+        with open(os.path.join(self.experiment_dir, '%s.pkl' % self.name), 'wb') as out_file:
+            pickle.dump(self, out_file)
+        json_obj = {'name': self.name,
+                    'data_sources': self.data_sources,
+                    'params': self.params,
+                    'results': self.results}
+        with open(os.path.join(self.experiment_dir, 'experiment.json'), 'w') as json_file:
+            json.dump(json_obj, json_file)
