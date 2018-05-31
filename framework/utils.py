@@ -1,5 +1,6 @@
 import os
 import subprocess
+import functools
 from threading import Timer
 import datetime
 
@@ -37,3 +38,9 @@ def create_new_execution_folder(name):
     execution_dir = os.path.join(config.base_output_path, execution_dir_name)
     os.mkdir(execution_dir)
     return execution_dir
+
+
+def _rgetattr(obj, attr, *args):
+    def _getattr(obj, attr):
+        return getattr(obj, attr, *args)
+    return functools.reduce(_getattr, [obj] + attr.split('.'))

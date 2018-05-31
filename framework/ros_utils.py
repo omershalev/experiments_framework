@@ -1,4 +1,6 @@
 import subprocess
+import numpy as np
+import pandas as pd
 import time
 import rosbag
 
@@ -45,3 +47,20 @@ def save_map(map_name, dir_name):
     save_map_proc = subprocess.Popen(['rosrun', 'map_server', 'map_saver', '-f', map_name], cwd=dir_name)
     time.sleep(1)
     save_map_proc.kill()
+
+
+def bag_to_dataframe(bag_path, topic, fields):
+    data = {}
+    timestamps = []
+    for field in fields:
+        data[field] = np.array([])
+    if type(bag_path) is not tuple:
+        bag_path = (bag_path,)
+    for single_bag_path in bag_path:
+        single_bag = rosbag.Bag(single_bag_path)
+        for _, message, timestamp in single_bag.read_messages(topics=topic):
+            for field in fields:
+                data[field] = np.append(data[field], utils._rgetattr(message, field))
+            timestamps.append(timestamp.to_nsec())
+    df = pd.concat([pd.Series(data[field], index=timestamps, name=field) for field in fields], axis=1)
+    return df
