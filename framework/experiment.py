@@ -39,15 +39,15 @@ class Experiment(object):
         return True
 
     def run(self, repetitions, **kwargs):
-        experiment_dir_name = '%s_%s' % (datetime.datetime.now().strftime('%Y%m%d-%H%M%S'), self.name)
-        self.experiment_dir = os.path.join(self.working_dir, experiment_dir_name)
-        os.mkdir(self.experiment_dir)
-        i = 0
-        while i < repetitions:
-            self.repetition_dir = os.path.join(self.experiment_dir, str(i))
-            os.mkdir(self.repetition_dir)
-            _logger.info('Beginning repetition #%d' % i)
-            try:
+        try:
+            experiment_dir_name = '%s_%s' % (datetime.datetime.now().strftime('%Y%m%d-%H%M%S'), self.name)
+            self.experiment_dir = os.path.join(self.working_dir, experiment_dir_name)
+            os.mkdir(self.experiment_dir)
+            i = 0
+            while i < repetitions:
+                self.repetition_dir = os.path.join(self.experiment_dir, str(i))
+                os.mkdir(self.repetition_dir)
+                _logger.info('Beginning repetition #%d' % i)
                 self.clean_env()
                 self.task(**kwargs)
                 if self.is_valid():
@@ -55,14 +55,16 @@ class Experiment(object):
                     i += 1
                 else:
                     _logger.info('Invalid execution')
-            except Exception as e:
-                _logger.error('Encountered an error: %s' % e)
-        with open(os.path.join(self.experiment_dir, '%s.pkl' % self.name), 'wb') as out_file:
-            pickle.dump(self, out_file)
-        json_obj = {'name': self.name,
-                    'data_sources': self.data_sources,
-                    'data_md5' : self._md5,
-                    'params': self.params,
-                    'results': self.results}
-        with open(os.path.join(self.experiment_dir, 'experiment.json'), 'w') as json_file:
-            json.dump(json_obj, json_file)
+                    os.rename(self.repetition_dir, '%s_invalid' % self.repetition_dir)
+                    i += 1
+            with open(os.path.join(self.experiment_dir, '%s.pkl' % self.name), 'wb') as out_file:
+                pickle.dump(self, out_file)
+            json_obj = {'name': self.name,
+                        'data_sources': self.data_sources,
+                        'data_md5' : self._md5,
+                        'params': self.params,
+                        'results': self.results}
+            with open(os.path.join(self.experiment_dir, 'experiment.json'), 'w') as json_file:
+                json.dump(json_obj, json_file)
+        finally:
+            self.clean_env()

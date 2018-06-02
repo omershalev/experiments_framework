@@ -33,6 +33,11 @@ def new_process(command, cwd=None, output_to_console=None):
     return proc
 
 
+def kill_process(process_name):
+    proc = new_process(['killall', '-9', process_name], output_to_console=False)
+    proc.communicate()
+
+
 def create_new_execution_folder(name):
     execution_dir_name = '%s_%s' % (datetime.datetime.now().strftime('%Y%m%d-%H%M%S'), name)
     execution_dir = os.path.join(config.base_output_path, execution_dir_name)
