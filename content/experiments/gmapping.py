@@ -8,7 +8,9 @@ import experiments_framework.framework.utils as utils
 class GmappingExperiment(Experiment):
 
     def clean_env(self):
-        ros_utils.kill_all()
+        utils.kill_process('slam_gmapping')
+        ros_utils.kill_master()
+
 
     def task(self, **kwargs):
         ros_utils.start_master(use_sim_time=True)
