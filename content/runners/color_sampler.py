@@ -10,8 +10,8 @@ image_paths_list = [descriptor.path for descriptor in dji_data.snapshots_60_mete
 if __name__ == '__main__':
     samples = []
     for image_path in image_paths_list:
-        img = cv2.imread(image_path)
-        samples += cv_utils.sample_hsv_color(img)
+        image = cv2.imread(image_path)
+        samples += cv_utils.sample_hsv_color(image)
 
     h_mean = np.mean([sample[0] for sample in samples])
     h_median = np.median([sample[0] for sample in samples])
