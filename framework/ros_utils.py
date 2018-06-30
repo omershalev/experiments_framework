@@ -1,9 +1,14 @@
 import subprocess
 import numpy as np
 import pandas as pd
+import yaml
+import os
 import time
+import cv2
+import rospy
 import rosbag
 import rosnode
+from geometry_msgs.msg import Pose2D
 
 import utils
 import logger
@@ -88,3 +93,29 @@ def bag_to_dataframe(bag_path, topic, fields):
             timestamps.append(timestamp.to_sec())
     df = pd.concat([pd.Series(data[field], index=timestamps, name=field) for field in fields], axis=1)
     return df
+
+
+def save_image_to_map(image, resolution, map_name, dir_name):
+    cv2.imwrite(os.path.join(dir_name, map_name + '.pgm'), image)
+    yaml_content = {'image' : map_name,
+                    'resolution' : resolution,
+                    'origin' : [0.0, 0.0, 0.0],
+                    'negate' : 1,
+                    'occupied_thresh' : 0.9,
+                    'free_thresh' : 0.1}
+    with open(os.path.join(dir_name, map_name + '.yaml'), 'w') as yaml_file:
+        yaml.dump(yaml_content, yaml_file)
+
+
+def trajectory_to_bag(pose_time_tuples_list, bag_path, topic='vehicle_pose'):
+    bag_file = rosbag.Bag(bag_path, 'w')
+    start_time = pose_time_tuples_list[0]
+    for pose_time in pose_time_tuples_list:
+        # TODO: go over legacy code and see where IMAGE_HEIGHT is subtracted
+        x = pose_time[0]
+        y = pose_time[1]
+        t = pose_time[2] - start_time
+        ros_time = rospy.rostime.Time(secs=t.seconds, nsecs=t.microseconds*1e3)
+        pose_2d_message = Pose2D(x, y)
+        bag_file.write(topic, pose_2d_message, ros_time)
+    bag_file.close()
