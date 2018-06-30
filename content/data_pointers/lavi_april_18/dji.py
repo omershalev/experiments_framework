@@ -2,7 +2,7 @@ import os
 import experiments_framework.framework.config as config
 from experiments_framework.framework.data_descriptor import DataDescriptor
 
-base_path = config.base_data_path
+base_path = config.base_raw_data_path
 
 snapshots_60_meters = {
                         '15-20-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0137.JPG'), 'table in 5-6, 4 landmarks, 60? meters'),
