@@ -14,7 +14,7 @@ class GmappingExperiment(Experiment):
 
     def task(self, **kwargs):
         ros_utils.start_master(use_sim_time=True)
-        ros_utils.launch('jackal_navigation', 'gmapping.launch')
+        ros_utils.launch(package='jackal_navigation', launch_file='gmapping.launch')
         _, bag_duration = ros_utils.play_bag(self.data_sources, use_clock=True)
         start_time = datetime.datetime.now()
         while True:
