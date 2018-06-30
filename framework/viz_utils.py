@@ -33,5 +33,3 @@ def show_image(window_name, image, wait_key=True):
     cv2.imshow(window_name, image)
     if wait_key:
         cv2.waitKey(0)
-
-
