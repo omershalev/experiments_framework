@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from itertools import product
+import pickle
 import rospy
 import torch
 
@@ -17,9 +18,13 @@ if __name__ == '__main__':
     image = cv2.imread(image_path)
     map_image = segmentation.extract_canopies_map(image)
     i = 0
+    dataset = {}
     for x, y in product(xrange(map_image.shape[1]), xrange(map_image.shape[0])):
         if map_image[(y, x)] == 0:
             print (x, y)
             map_image = cv2.circle(map_image, (x, y), radius=10, color=(255, 255, 255), thickness=2)
             range, coordinates_list = contours_scan.generate(map_image, center_x=x, center_y=y, min_angle=0, max_angle=2*np.pi, samples_num=360, min_distance=3, max_distance=300, resolution=0.0125) # TODO: resolution
-    viz_utils.show_image('points', map_image)
+            dataset[(x,y)] = range
+    with open(r'/home/omer/Downloads/scan_dataset.pkl', 'wb') as p:
+        pickle.dump(dataset, p)
+    # viz_utils.show_image('points', map_image)
