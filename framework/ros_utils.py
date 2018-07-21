@@ -1,14 +1,16 @@
-import subprocess
 import numpy as np
 import pandas as pd
 import yaml
 import os
 import time
+import re
 import cv2
+import datetime
 import rospy
 import rosbag
 import rosnode
 from geometry_msgs.msg import Pose2D
+from rosgraph_msgs.msg import Log
 
 import utils
 import logger
@@ -35,10 +37,26 @@ def kill_master():
 
 def launch(**kwargs):
     if kwargs.has_key('direct_path'):
-        launch_proc = utils.new_process(['roslaunch', kwargs.get('direct_path')])
+        command = ['roslaunch', kwargs.get('direct_path')]
     else:
-        launch_proc = utils.new_process(['roslaunch', kwargs.get('package'), kwargs.get('launch_file')])
+        command = ['roslaunch', kwargs.get('package'), kwargs.get('launch_file')]
+    if kwargs.has_key('argv'):
+        command += ['%s:=%s' % (arg, value) for arg, value in kwargs.get('argv').items()]
+    launch_proc = utils.new_process(command)
     return launch_proc
+
+
+def run_node(package, node, namespace=None, argc=None, argv=None):
+    if namespace is not None:
+        command = ['export', 'ROS_NAMESPACE=%s' % namespace, '&&', 'rosrun', package, node]
+    else:
+        command = ['rosrun', package, node]
+    if argc is not None:
+        command += argc
+    elif argv is not None:
+        command += ['%s:=%s' % (arg, value) for arg, value in argv.items()]
+    node_proc = utils.new_process(command)
+    return node_proc
 
 
 def play_bag(bag_file, use_clock=True):
@@ -73,7 +91,8 @@ def stop_recording_bags():
 
 
 def save_map(map_name, dir_name):
-    save_map_proc = subprocess.Popen(['rosrun', 'map_server', 'map_saver', '-f', map_name], cwd=dir_name)
+    # save_map_proc = subprocess.Popen(['rosrun', 'map_server', 'map_saver', '-f', map_name], cwd=dir_name) # TODO: remove
+    save_map_proc = utils.new_process(['rosrun', 'map_server', 'map_saver', '-f', map_name], cwd=dir_name)
     time.sleep(1)
     save_map_proc.kill()
 
@@ -97,7 +116,7 @@ def bag_to_dataframe(bag_path, topic, fields):
 
 def save_image_to_map(image, resolution, map_name, dir_name):
     cv2.imwrite(os.path.join(dir_name, map_name + '.pgm'), image)
-    yaml_content = {'image' : map_name,
+    yaml_content = {'image' : map_name + '.pgm',
                     'resolution' : resolution,
                     'origin' : [0.0, 0.0, 0.0],
                     'negate' : 1,
@@ -109,13 +128,42 @@ def save_image_to_map(image, resolution, map_name, dir_name):
 
 def trajectory_to_bag(pose_time_tuples_list, bag_path, topic='vehicle_pose'):
     bag_file = rosbag.Bag(bag_path, 'w')
-    start_time = pose_time_tuples_list[0]
     for pose_time in pose_time_tuples_list:
         # TODO: go over legacy code and see where IMAGE_HEIGHT is subtracted
         x = pose_time[0]
         y = pose_time[1]
-        t = pose_time[2] - start_time
-        ros_time = rospy.rostime.Time(secs=t.seconds, nsecs=t.microseconds*1e3)
-        pose_2d_message = Pose2D(x, y)
+        t = pose_time[2]
+        ros_time = rospy.Time.from_sec(t)
+
+        pose_2d_message = Pose2D(x, y, 0)
         bag_file.write(topic, pose_2d_message, ros_time)
     bag_file.close()
+
+
+def wait_for_rosout_message(node_name, desired_message, is_regex=False):
+    class _RosoutMessageWaiter(object):
+        def __init__(self, node_name, desired_message, is_regex):
+            self.wait = True
+            self.node_name = node_name
+            self.desired_message = desired_message
+            self.is_regex = is_regex
+            rospy.init_node('wait_for_rosout_message')
+            rospy.Subscriber('/rosout', Log, self.rosout_callback)
+            while self.wait:
+                time.sleep(1)
+        def rosout_callback(self, message):
+            print '$$$$$$$$$$$$$$$$$$$$$$$$$$$$' + message.msg + '$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
+            print self.desired_message
+            if message.name == self.node_name or message.name[1:] == self.node_name:
+                if self.is_regex:
+                    print 'here'
+                    if re.match(self.desired_message, message.msg) is not None:
+                        self.wait = False
+                else:
+                    if message.msg == self.desired_message:
+                        self.wait = False
+
+    from multiprocessing import Process
+    p = Process(target=_RosoutMessageWaiter, args=(node_name, desired_message, is_regex))
+    p.start()
+    p.join()
