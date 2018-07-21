@@ -3,6 +3,7 @@ import experiments_framework.framework.config as config
 from experiments_framework.framework.data_descriptor import DataDescriptor
 
 base_path = config.base_raw_data_path
+markers_locations_path = config.markers_locations_path
 
 snapshots_60_meters = {
                         '15-20-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0137.JPG'), 'table in 5-6, 4 landmarks, 60? meters'),
@@ -22,6 +23,7 @@ snapshots_60_meters = {
                         '19-03-5': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0183.JPG'), '4 landmarks, 60? meters')
                       }
 
+snapshots_60_meters_markers_locations_json = os.path.join(markers_locations_path, 'snapshots_60_meters.json')
 
 snapshots_80_meters = {
                          '15-08-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0115.JPG'), '4 landmarks, 80 meters'),
@@ -58,3 +60,4 @@ snapshots_80_meters = {
                          '19-04-4': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0187.JPG'), '4 landmarks, 80? meters')
                       }
 
+snapshots_80_meters_markers_locations_json = os.path.join(markers_locations_path, 'snapshots_80_meters.json')
