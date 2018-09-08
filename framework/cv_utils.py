@@ -51,13 +51,12 @@ def mark_trajectory_on_image(image):
                 self.image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
             else:
                 self.image = image
-            self.image = image
             self.pose_time_tuples_list = []
 
         def mouse_callback(self, event, x, y, flags, param):
             if self.mark:
-                # self.pose_time_tuples_list.append((x, y, datetime.datetime.now())) # TODO: remove
-                self.pose_time_tuples_list.append((x, y, time.time()))
+                t = time.time()
+                self.pose_time_tuples_list.append((x, y, t))
                 for (x, y, _) in self.pose_time_tuples_list:
                     self.image = cv2.circle(img=self.image, center=(x, y), radius=2, color=(255, 255, 255),
                                             thickness=-1)
@@ -96,3 +95,10 @@ def get_bounding_box(image, points, expand_ratio=0.0):
 def mark_bounding_box(image, points, expand_ratio=0.0):
     (upper_left_x, upper_left_y), (lower_right_x, lower_right_y) = get_bounding_box(image, points, expand_ratio)
     cv2.rectangle(image, (upper_left_x, upper_left_y), (lower_right_x, lower_right_y), (255, 255, 0), 2)
+
+
+def center_crop(image, x_ratio, y_ratio):
+    x_size = image.shape[1]
+    y_size = image.shape[0]
+    return image[int(y_ratio * y_size):int((1 - y_ratio) * y_size), int(x_ratio * x_size):int((1 - x_ratio) * x_size)]
+
