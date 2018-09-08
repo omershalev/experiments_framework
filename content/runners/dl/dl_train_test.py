@@ -4,18 +4,8 @@ import torch.nn as nn
 import numpy as np
 from torch.autograd import Variable
 
-from experiments_framework.content.runners import dl_dataset
+from experiments_framework.content.runners.dl import dl_dataset
 
-# Hyper parameters
-num_epochs = 1500
-batch_size = 600
-learning_rate = 0.00001
-
-# MNIST constants
-input_size = 784
-num_classes = 10
-
-# Override hyper parameters with the ones from the tutorial - remove it!
 num_epochs = 10
 batch_size = 100
 learning_rate = 0.001
@@ -64,11 +54,7 @@ test_loss = np.zeros((num_epochs))
 # Training
 for epoch in range(num_epochs):
 
-    # Iterate over test data for loss/error calculation
-    correct = 0
-    total = 10000
     for i, sample_batched in enumerate(train_loader):
-        print (i)
         scans = sample_batched['scan']
         labels = sample_batched['location']
         images_var = Variable(scans)
@@ -76,7 +62,7 @@ for epoch in range(num_epochs):
 
         optimizer.zero_grad()
         outputs = model(images_var)
-        loss = criterion(outputs, labels_var)
+        loss = criterion(outputs, labels_var) # TODO: move to another place?
         loss.backward()
         optimizer.step()
 

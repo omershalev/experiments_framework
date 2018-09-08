@@ -8,9 +8,6 @@ from air_ground_orchard_navigation.computer_vision import contours_scan2
 from experiments_framework.framework import utils
 
 
-
-
-
 def slice_handler(map_image, left_x, right_x, upper_y, lower_y):
     total = (right_x - left_x) * (lower_y - upper_y)
     i = 0
@@ -28,13 +25,16 @@ def slice_handler(map_image, left_x, right_x, upper_y, lower_y):
 
 if __name__ == '__main__':
 
+    import datetime
+
     map_image = cv2.cvtColor(cv2.imread(r'/home/omer/Downloads/temp_map_2.pgm'), cv2.COLOR_RGB2GRAY)
     slice_step = map_image.shape[1] / multiprocessing.cpu_count()
     x_splits = range(0, map_image.shape[1], slice_step)
     x_splits[-1] = map_image.shape[1]
     x_start_stop_tuples = [(x_start, x_stop) for x_start, x_stop in zip(x_splits, x_splits[1:])]
-    # utils.joblib_map(slice_handler, [(map_image, x_start, x_stop, 0, map_image.shape[0]) for x_start, x_stop in x_start_stop_tuples])
-    utils.joblib_map(slice_handler, [(map_image, x_start, x_stop, 0, 5) for x_start, x_stop in x_start_stop_tuples])
+    utils.joblib_map(slice_handler, [(map_image, x_start, x_stop, 0, map_image.shape[0]) for x_start, x_stop in x_start_stop_tuples])
+    # utils.joblib_map(slice_handler, [(map_image, x_start, x_stop, 0, 5) for x_start, x_stop in x_start_stop_tuples])
 
+    print (datetime.datetime.now())
     print ('end')
 
