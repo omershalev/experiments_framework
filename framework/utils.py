@@ -1,7 +1,9 @@
 import os
 import subprocess
 import functools
+import multiprocessing
 from threading import Timer
+from joblib import Parallel, delayed
 import datetime
 
 import config
@@ -45,7 +47,33 @@ def create_new_execution_folder(name):
     return execution_dir
 
 
-def _rgetattr(obj, attr, *args):
+def rgetattr(obj, attr, *args):
     def _getattr(obj, attr):
         return getattr(obj, attr, *args)
     return functools.reduce(_getattr, [obj] + attr.split('.'))
+
+
+def joblib_map(func, iterable):
+    return Parallel(
+        n_jobs=-1,
+        timeout=36000 # 10 hours
+    )(delayed(func)(*args) for args in iterable)
+
+
+def slice_handler(slice_start, slice_stop, iterable_to_split, func):
+    ret_values = []
+    for idx in xrange(slice_start, slice_stop):
+        ret_values.append(func(iterable_to_split[idx]))
+    return ret_values
+
+
+def distribute_evenly_on_all_cores(func, iterable_to_split):
+    split_step = len(iterable_to_split) / multiprocessing.cpu_count()
+    slice_indices = range(0, len(iterable_to_split), split_step)
+    slice_indices[-1] = len(iterable_to_split)
+    slice_start_stop_tuples = [(slice_start, slice_stop) for slice_start, slice_stop in zip(slice_indices, slice_indices[1:])]
+    joblib_ret_values = joblib_map(slice_handler, [(slice_start, slice_stop, iterable_to_split, func) for slice_start, slice_stop in slice_start_stop_tuples])
+    ret = []
+    for joblib_ret_value in joblib_ret_values:
+        ret += joblib_ret_value
+    return ret
