@@ -17,17 +17,7 @@ class Experiment(object):
         self.working_dir = working_dir
         self.params = params
         self.results = OrderedDict()
-        self._calculate_md5()
         _logger.info('New experiment: %s' % self.name)
-
-    def _calculate_md5(self):
-        if type(self.data_sources) == tuple:
-            hash_obj = hashlib.md5(open(self.data_sources[0], 'rb').read())
-            for data_source in self.data_sources:
-                hash_obj.update(open(data_source, 'rb').read())
-                self._md5 = hash_obj.hexdigest()
-        else:
-            self._md5 = hashlib.md5(open(self.data_sources, 'rb').read()).hexdigest()
 
     def clean_env(self):
         raise NotImplementedError
@@ -57,14 +47,11 @@ class Experiment(object):
                     _logger.info('Invalid execution')
                     os.rename(self.repetition_dir, '%s_invalid' % self.repetition_dir)
                     i += 1
-            with open(os.path.join(self.experiment_dir, '%s.pkl' % self.name), 'wb') as out_file:
-                pickle.dump(self, out_file)
             json_obj = {'name': self.name,
                         'data_sources': self.data_sources,
-                        'data_md5' : self._md5,
                         'params': self.params,
                         'results': self.results}
-            with open(os.path.join(self.experiment_dir, 'experiment.json'), 'w') as json_file:
-                json.dump(json_obj, json_file)
+            with open(os.path.join(self.experiment_dir, 'experiment_metadata.json'), 'w') as json_file:
+                json.dump(json_obj, json_file, indent=4)
         finally:
             self.clean_env()
