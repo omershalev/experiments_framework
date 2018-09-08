@@ -5,16 +5,19 @@ import os
 import time
 import re
 import cv2
-import datetime
+from collections import OrderedDict
+from multiprocessing import Process
 import rospy
 import rosbag
 import rosnode
+from scipy.signal import resample
 from geometry_msgs.msg import Pose2D
 from rosgraph_msgs.msg import Log
 
 import utils
 import logger
 
+DEBUG_ROSOUT = False
 
 _logger = logger.get_logger()
 
@@ -33,6 +36,19 @@ def kill_master():
     _logger.info('Killing all live ROS master processes')
     for proc_name in ['roscore', 'rosmaster', 'rosout']:
         utils.kill_process(proc_name)
+    roslaunch_kill_proc = utils.new_process(['killall', 'roslaunch', '-2'])
+    roslaunch_kill_proc.communicate()
+
+
+def launch_rviz(config_path=None):
+    command = ['rviz']
+    if config_path is not None:
+        command += ['-d', config_path]
+    utils.new_process(command)
+
+
+def kill_rviz():
+    utils.kill_process('rviz')
 
 
 def launch(**kwargs):
@@ -59,16 +75,16 @@ def run_node(package, node, namespace=None, argc=None, argv=None):
     return node_proc
 
 
-def play_bag(bag_file, use_clock=True):
+def play_bag(bag_path, use_clock=True):
     _logger.info('Starting bag playing')
-    if type(bag_file) == tuple:
-        bags = [rosbag.Bag(single_bag_file) for single_bag_file in bag_file]
+    if type(bag_path) == tuple:
+        bags = [rosbag.Bag(single_bag_path) for single_bag_path in bag_path]
         duration_in_seconds = sum([bag.get_end_time() - bag.get_start_time() for bag in bags])
-        path_for_command_line = ' '.join(bag_file)
+        path_for_command_line = ' '.join(bag_path)
     else:
-        bag = rosbag.Bag(bag_file)
+        bag = rosbag.Bag(bag_path)
         duration_in_seconds = bag.get_end_time() - bag.get_start_time()
-        path_for_command_line = bag_file
+        path_for_command_line = bag_path
     if use_clock:
         play_proc = utils.new_process(['rosbag', 'play', path_for_command_line, '--clock'], output_to_console=True)
     else:
@@ -76,14 +92,16 @@ def play_bag(bag_file, use_clock=True):
     return play_proc, duration_in_seconds
 
 
-def start_recording_bag(path, topics=None):
+def start_recording_bag(bag_path, topics=None):
+    _logger.info('Starting bag recording')
     if topics is None:
         topics = ['-a']
-    record_proc = utils.new_process(['rosbag', 'record'] + topics + ['-O', path])
+    record_proc = utils.new_process(['rosbag', 'record'] + topics + ['-O', bag_path])
     return record_proc
 
 
 def stop_recording_bags():
+    _logger.info('Stopping bag recording')
     nodes_list = rosnode.get_node_names()
     for node_name in nodes_list:
         if node_name.find('record') != -1:
@@ -91,7 +109,6 @@ def stop_recording_bags():
 
 
 def save_map(map_name, dir_name):
-    # save_map_proc = subprocess.Popen(['rosrun', 'map_server', 'map_saver', '-f', map_name], cwd=dir_name) # TODO: remove
     save_map_proc = utils.new_process(['rosrun', 'map_server', 'map_saver', '-f', map_name], cwd=dir_name)
     time.sleep(1)
     save_map_proc.kill()
@@ -108,7 +125,7 @@ def bag_to_dataframe(bag_path, topic, fields):
         single_bag = rosbag.Bag(single_bag_path)
         for _, message, timestamp in single_bag.read_messages(topics=topic):
             for field in fields:
-                data[field] = np.append(data[field], utils._rgetattr(message, field))
+                data[field] = np.append(data[field], utils.rgetattr(message, field))
             timestamps.append(timestamp.to_sec())
     df = pd.concat([pd.Series(data[field], index=timestamps, name=field) for field in fields], axis=1)
     return df
@@ -127,7 +144,7 @@ def save_image_to_map(image, resolution, map_name, dir_name):
 
 
 def trajectory_to_bag(pose_time_tuples_list, bag_path, topic='vehicle_pose'):
-    bag_file = rosbag.Bag(bag_path, 'w')
+    bag = rosbag.Bag(bag_path, 'w')
     for pose_time in pose_time_tuples_list:
         # TODO: go over legacy code and see where IMAGE_HEIGHT is subtracted
         x = pose_time[0]
@@ -136,8 +153,8 @@ def trajectory_to_bag(pose_time_tuples_list, bag_path, topic='vehicle_pose'):
         ros_time = rospy.Time.from_sec(t)
 
         pose_2d_message = Pose2D(x, y, 0)
-        bag_file.write(topic, pose_2d_message, ros_time)
-    bag_file.close()
+        bag.write(topic, pose_2d_message, ros_time)
+    bag.close()
 
 
 def wait_for_rosout_message(node_name, desired_message, is_regex=False):
@@ -152,18 +169,34 @@ def wait_for_rosout_message(node_name, desired_message, is_regex=False):
             while self.wait:
                 time.sleep(1)
         def rosout_callback(self, message):
-            print '$$$$$$$$$$$$$$$$$$$$$$$$$$$$' + message.msg + '$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
-            print self.desired_message
+            if DEBUG_ROSOUT:
+                print('Received a new message on rosout: %s' % message.msg)
             if message.name == self.node_name or message.name[1:] == self.node_name:
                 if self.is_regex:
-                    print 'here'
                     if re.match(self.desired_message, message.msg) is not None:
                         self.wait = False
                 else:
                     if message.msg == self.desired_message:
                         self.wait = False
 
-    from multiprocessing import Process
     p = Process(target=_RosoutMessageWaiter, args=(node_name, desired_message, is_regex))
     p.start()
     p.join()
+
+
+def downsample_bag(input_bag_path, topic, target_frequency, output_bag_path=None):
+    input_bag = rosbag.Bag(input_bag_path)
+    duration_in_seconds = input_bag.get_end_time() - input_bag.get_start_time()
+    time_to_message = OrderedDict()
+    for _, message, t in input_bag.read_messages(topics=topic):
+        time_to_message[t.to_sec()] = message
+    input_bag.close()
+    samples_num = int(float(duration_in_seconds) * target_frequency)
+    resampled_times = resample(np.array(time_to_message.keys()), num=samples_num)
+    sampled_times = map(lambda sampled_time: np.array(time_to_message.keys()).flat[np.abs(np.array(time_to_message.keys()) - sampled_time).argmin()], resampled_times)
+    if output_bag_path is None:
+        output_bag_path = input_bag_path
+    output_bag = rosbag.Bag(output_bag_path, 'w')
+    for sampled_time in sampled_times:
+        output_bag.write(topic, time_to_message[sampled_time], rospy.Time.from_sec(sampled_time))
+    output_bag.close()
