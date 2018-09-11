@@ -1,10 +1,10 @@
 import time
 import os
 
-from experiments_framework.framework.experiment import Experiment
-from experiments_framework.framework import ros_utils
-from experiments_framework.framework import utils
-from experiments_framework.framework import config
+from framework.experiment import Experiment
+from framework import ros_utils
+from framework import utils
+from framework import config
 
 class AmclSnapshotsExperiment(Experiment):
 
@@ -29,7 +29,16 @@ class AmclSnapshotsExperiment(Experiment):
         # Launch synthetic scan generator
         ros_utils.launch(package='localization',
                          launch_file='synthetic_scan_generator.launch',
-                         argv={'localization_image_path': self.data_sources['localization_image_path', 'resolution': config.top_view_resolution]})
+                         argv={'virtual_ugv_mode': True,
+                               'localization_image_path': self.data_sources['localization_image_path'],
+                               'min_angle': config.min_scan_angle,
+                               'max_angle': config.max_scan_angle,
+                               'samples_num': config.scan_samples_num,
+                               'min_distance': config.min_scan_distance,
+                               'max_distance': config.max_scan_distance,
+                               'resolution': config.top_view_resolution,
+                               'r_primary_search_samples': 50, # TODO: read from config
+                               'r_secondary_search_step': 2}) # TODO: read from config
 
         # Launch map server
         ros_utils.launch(package='localization',
@@ -52,7 +61,7 @@ class AmclSnapshotsExperiment(Experiment):
 
         # Start recording output bag
         self.results['output_bag'] = os.path.join(self.repetition_dir, self.name)
-        ros_utils.start_recording_bag(os.path.join(self.repetition_dir, self.name, 'output'), ['/amcl_pose', '/particlecloud', '/scanmatcher_pose', '/vehicle_pose'])
+        ros_utils.start_recording_bag(os.path.join(self.repetition_dir, self.name, 'output'), ['/amcl_pose', '/particlecloud', '/scanmatcher_pose', '/ugv_pose'])
 
         # Start input bag and wait
         _, bag_duration = ros_utils.play_bag(self.data_sources['trajectory_bag_path'])
@@ -67,8 +76,8 @@ class AmclSnapshotsExperiment(Experiment):
 
 if __name__ == '__main__':
     experiment = AmclSnapshotsExperiment(name='amcl_exploration',
-                                         data_sources={'trajectory_bag_path': r'/home/omer/Downloads/15-53-1_random_trajectory.bag',
-                                              'localization_image_path': r'/home/omer/Downloads/dji_15-53-1_map.pgm',
-                                              'map_yaml_path': r'/home/omer/Downloads/dji_15-53-1_map.yaml'},
+                                         data_sources={'trajectory_bag_path': r'/home/omer/orchards_ws/output/20180911-003527_trajectory_tagging_2/15-53-1_random_trajectory.bag',
+                                                       'localization_image_path': r'/home/omer/orchards_ws/data/lavi_apr_18/maps/snapshots_80_meters/15-53-1_map.pgm',
+                                                       'map_yaml_path': r'/home/omer/orchards_ws/data/lavi_apr_18/maps/snapshots_80_meters/15-53-1_map.yaml'},
                                          working_dir=r'/home/omer/Downloads')
     experiment.run(repetitions=1, launch_rviz=True)

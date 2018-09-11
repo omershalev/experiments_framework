@@ -1,9 +1,9 @@
 import time
 import datetime
 
-from experiments_framework.framework.experiment import Experiment
-import experiments_framework.framework.ros_utils as ros_utils
-import experiments_framework.framework.utils as utils
+from framework.experiment import Experiment
+import framework.ros_utils as ros_utils
+import framework.utils as utils
 
 class GmappingExperiment(Experiment):
 
