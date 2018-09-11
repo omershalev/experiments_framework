@@ -1,19 +1,21 @@
 import cv2
 import numpy as np
-import datetime
 import time
+from skimage.measure import compare_ssim as ssim
 
 import viz_utils
 
 
-def sample_pixel_coordinates(image):
+def sample_pixel_coordinates(image, multiple=False):
     class _CoordinatesSampler(object):
         def __init__(self):
-            self.clicked_x = None
-            self.clicked_y = None
+            self.clicked_points = []
         def mouse_callback(self, event, x, y, flags, param):
             if event == cv2.EVENT_LBUTTONDOWN:
-                self.clicked_x, self.clicked_y = x, y
+                if multiple:
+                    self.clicked_points.append((x,y))
+                else:
+                    self.clicked_points = [(x,y)]
 
     cs = _CoordinatesSampler()
     viz_utils.show_image('image', image, wait_key=False)
@@ -23,7 +25,10 @@ def sample_pixel_coordinates(image):
         if key == ord('q'):
             break
     cv2.destroyWindow('image')
-    return cs.clicked_x, cs.clicked_y
+    if multiple:
+        return cs.clicked_points
+    else:
+        return cs.clicked_points[0]
 
 
 def sample_hsv_color(image):
@@ -102,3 +107,59 @@ def center_crop(image, x_ratio, y_ratio):
     y_size = image.shape[0]
     return image[int(y_ratio * y_size):int((1 - y_ratio) * y_size), int(x_ratio * x_size):int((1 - x_ratio) * x_size)]
 
+
+def crop_region(image, x_center, y_center, x_pixels, y_pixels):
+    x_size = image.shape[1]
+    y_size = image.shape[0]
+    image = image[max(0, y_center - y_pixels / 2) : min(y_size, y_center + y_pixels / 2),
+                  max(0, x_center - x_pixels / 2) : min(x_size, x_center + x_pixels / 2)]
+    upper_left = (max(0, x_center - x_pixels / 2), max(0, y_center - y_pixels / 2))
+    lower_right = (min(x_size, x_center + x_pixels / 2), min(y_size, y_center + y_pixels / 2))
+    return image, upper_left, lower_right
+
+
+def insert_image_patch(image, patch, upper_left, lower_right):
+    image[upper_left[1] : lower_right[1], upper_left[0] : lower_right[0]] = patch
+    return image
+
+
+def get_coordinates_list_from_scan_ranges(scan_ranges, center_x, center_y, min_angle, max_angle, resolution):
+    samples_num = len(scan_ranges)
+    coordinates_list = []
+    for scan_idx, theta in enumerate(np.linspace(min_angle, max_angle, num=samples_num)):
+        if np.isnan(scan_ranges[scan_idx]):
+            continue
+        x = int(np.round(center_x + scan_ranges[scan_idx] / resolution * np.cos(-theta)))
+        y = int(np.round(center_y + scan_ranges[scan_idx] / resolution * np.sin(-theta)))
+        coordinates_list.append((x,y))
+    return coordinates_list
+
+
+def warp_image(image, points_in_image, points_in_baseline, method='homographic'):
+    if method == 'homographic':
+        h, _ = cv2.findHomography(np.float32(points_in_image), np.float32(points_in_baseline))
+        warpped_image = cv2.warpPerspective(image, h, (image.shape[1], image.shape[0]))
+    elif method == 'affine':
+        M, _ = cv2.estimateAffine2D(np.float32(points_in_image), np.float32(points_in_baseline))
+        warpped_image = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
+    elif method == 'rigid':
+        M = cv2.estimateRigidTransform(np.float32(points_in_image), np.float32(points_in_baseline), fullAffine=False)
+        warpped_image = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
+    else:
+        raise Exception('Unsupported method')
+    return warpped_image
+
+
+def calculate_image_diff(image1, image2, method='mse', x_crop_ratio=0.3, y_crop_ratio=0.3):
+    if image1.shape != image2.shape:
+        raise Exception('Two images must have the same dimension')
+    image1 = center_crop(image1, x_crop_ratio, y_crop_ratio)
+    image2 = center_crop(image2, x_crop_ratio, y_crop_ratio)
+    if method == 'mse':
+        err = np.sum((image1.astype('float') - image2.astype('float')) ** 2)
+        err /= float(image1.shape[0] * image1.shape[1])
+    elif method == 'ssim':
+        err = ssim(image1, image2)
+    else:
+        raise Exception('Unsupported method')
+    return err
