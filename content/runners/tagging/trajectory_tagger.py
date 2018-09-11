@@ -2,22 +2,23 @@ import os
 import cv2
 import json
 
-from experiments_framework.framework import cv_utils
-from experiments_framework.framework import utils
-from experiments_framework.framework import ros_utils
-from air_ground_orchard_navigation.computer_vision import segmentation
-from experiments_framework.content.data_pointers.lavi_april_18 import dji
-from experiments_framework.framework import config
-from experiments_framework.framework import logger
+from framework import cv_utils
+from framework import utils
+from framework import ros_utils
+from computer_vision import segmentation
+from content.data_pointers.lavi_april_18 import dji
+from framework import config
+from framework import logger
 
 _logger = logger.get_logger()
 
 image_path = None # ignored if None
-relevant_keys = ['15-20-1', '16-54-1', '19-03-1', '15-08-1', '15-53-1', '16-55-1', '19-04-1'] # if None, take all
+# relevant_keys = ['15-20-1', '16-54-1', '19-03-1', '15-08-1', '15-53-1', '16-55-1', '19-04-1'] # if None, take all
+relevant_keys = ['15-53-1'] # if None, take all
 snapshots_groups = [dji.snapshots_60_meters, dji.snapshots_80_meters]
 markers_locations_json_paths = [dji.snapshots_60_meters_markers_locations_json_path, dji.snapshots_80_meters_markers_locations_json_path]
-fork_shaped = True
-S_shaped = True
+fork_shaped = False
+S_shaped = False
 random_shaped = True
 
 
@@ -46,7 +47,7 @@ if __name__ == '__main__':
                 pose_time_tuples_list = cv_utils.mark_trajectory_on_image(map_image)
                 ros_utils.trajectory_to_bag(pose_time_tuples_list, bag_path=os.path.join(execution_dir, '%s_fork_trajectory.bag' % key))
                 ros_utils.downsample_bag(input_bag_path=os.path.join(execution_dir, '%s_fork_trajectory.bag' % key),
-                                         topic='vehicle_pose',
+                                         topic='ugv_pose',
                                          target_frequency=config.synthetic_scan_target_frequency)
 
             if S_shaped:
@@ -54,7 +55,7 @@ if __name__ == '__main__':
                 pose_time_tuples_list = cv_utils.mark_trajectory_on_image(map_image)
                 ros_utils.trajectory_to_bag(pose_time_tuples_list, bag_path=os.path.join(execution_dir, '%s_S_trajectory.bag' % key))
                 ros_utils.downsample_bag(input_bag_path=os.path.join(execution_dir, '%s_S_trajectory.bag' % key),
-                                         topic='vehicle_pose',
+                                         topic='ugv_pose',
                                          target_frequency=config.synthetic_scan_target_frequency)
 
             if random_shaped:
@@ -62,7 +63,8 @@ if __name__ == '__main__':
                 pose_time_tuples_list = cv_utils.mark_trajectory_on_image(map_image)
                 ros_utils.trajectory_to_bag(pose_time_tuples_list, bag_path=os.path.join(execution_dir, '%s_random_trajectory.bag' % key))
                 ros_utils.downsample_bag(input_bag_path=os.path.join(execution_dir, '%s_random_trajectory.bag' % key),
-                                         topic='vehicle_pose',
+                                         topic='ugv_pose',
                                          target_frequency=config.synthetic_scan_target_frequency)
-
+                print pose_time_tuples_list
+                cv2.imwrite(r'/home/omer/Documents/another2.png', map_image)
             break
