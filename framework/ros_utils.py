@@ -13,6 +13,8 @@ import rosnode
 from scipy.signal import resample
 from geometry_msgs.msg import Pose2D
 from rosgraph_msgs.msg import Log
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 
 import utils
 import logger
@@ -143,7 +145,64 @@ def save_image_to_map(image, resolution, map_name, dir_name):
         yaml.dump(yaml_content, yaml_file)
 
 
-def trajectory_to_bag(pose_time_tuples_list, bag_path, topic='vehicle_pose'):
+def video_to_bag(video_path, topic, frame_id, bag_path):
+    bag = rosbag.Bag(bag_path, 'w')
+    cap = cv2.VideoCapture(video_path)
+    cv_bridge = CvBridge()
+    frame_idx = 0
+    while cap.isOpened():
+        ret, frame = cap.read()
+        video_timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) * 1e-3
+        if not ret:
+            break
+        stamp = rospy.rostime.Time.from_sec(video_timestamp)
+        message = cv_bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+        message.header.seq = frame_idx
+        message.header.stamp = stamp
+        message.header.frame_id = frame_id
+        frame_idx += 1
+        bag.write(topic, message, stamp)
+    cap.release()
+    bag.close()
+
+
+def play_video_to_topic(video_path, topic, frame_id):
+    class _VideoPlayer(object):
+        def __init__(self, video_path, topic, frame_id):
+            rospy.init_node('video_player')
+            pub = rospy.Publisher(topic, Image, queue_size=1)
+            cap = cv2.VideoCapture(video_path)
+            cv_bridge = CvBridge()
+            frame_idx = 0
+            prev_publish_time = None
+            prev_video_timestamp = None
+            while cap.isOpened():
+                ret, frame = cap.read()
+                video_timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) * 1e-3
+                if not ret:
+                    break
+                stamp = rospy.rostime.Time.from_sec(video_timestamp)
+                message = cv_bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+                message.header.seq = frame_idx
+                message.header.stamp = stamp
+                message.header.frame_id = frame_id
+                if frame_idx == 0:
+                    pub.publish(message)
+                else:
+                    delay = max(0, (video_timestamp - prev_video_timestamp) - (time.time() - prev_publish_time) - 3e-3)
+                    time.sleep(delay)
+                    pub.publish(message)
+                prev_publish_time = time.time()
+                prev_video_timestamp = video_timestamp
+                frame_idx += 1
+            cap.release()
+
+    p = Process(target=_VideoPlayer, args=(video_path, topic, frame_id))
+    p.start()
+    p.join()
+
+
+def trajectory_to_bag(pose_time_tuples_list, bag_path, topic='ugv_pose'):
     bag = rosbag.Bag(bag_path, 'w')
     for pose_time in pose_time_tuples_list:
         # TODO: go over legacy code and see where IMAGE_HEIGHT is subtracted
@@ -151,7 +210,6 @@ def trajectory_to_bag(pose_time_tuples_list, bag_path, topic='vehicle_pose'):
         y = pose_time[1]
         t = pose_time[2]
         ros_time = rospy.Time.from_sec(t)
-
         pose_2d_message = Pose2D(x, y, 0)
         bag.write(topic, pose_2d_message, ros_time)
     bag.close()
