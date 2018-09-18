@@ -2,10 +2,10 @@ import os
 import cv2
 import json
 
-from experiments_framework.framework import cv_utils
-from experiments_framework.framework import viz_utils
-from experiments_framework.framework import config
-from experiments_framework.content.data_pointers.lavi_april_18 import dji
+from framework import cv_utils
+from framework import viz_utils
+from framework import config
+from content.data_pointers.lavi_april_18 import dji
 
 data_dicts_list = {'snapshots_60_meters': dji.snapshots_60_meters, 'snapshots_80_meters': dji.snapshots_80_meters}
 
