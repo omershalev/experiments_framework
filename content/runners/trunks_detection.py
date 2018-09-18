@@ -16,8 +16,12 @@ viz_mode = True
 N = 6
 
 if __name__ == '__main__':
+    idx = 0
     for image_path in image_paths_list:
 
+        idx += 1
+        if idx != 4:
+            continue
         # Read image
         image = cv2.imread(image_path)
         if viz_mode:
@@ -30,7 +34,6 @@ if __name__ == '__main__':
         if viz_mode:
             viz_utils.show_image('cropped image', cropped_image)
 
-        '''
         # Estimate orchard orientation
         orientation = trunks_detection.estimate_rows_orientation(cropped_image)
         if viz_mode:
@@ -98,111 +101,45 @@ if __name__ == '__main__':
 
 
 
-        import pickle
-        obj_to_dump = {}
-        obj_to_dump['optimized_grid'] = optimized_grid
-        obj_to_dump['optimized_grid_args'] = optimized_grid_args
-        with open(r'/home/omer/Downloads/obj_to_dump.pkl', 'wb') as p:
-            pickle.dump(obj_to_dump, p)
-
-        break
-        '''
+        # TODO: title
 
 
-        # Extrapolate rest of the grid
-        # extrapolated_grid = {}
-        # for i in range(N):
-        #     for j in range(N):
-        #         extrapolated_grid[(i, j)] = np.array(optimized_grid[i + N * j]) + np.array(crop_origin)
+        full_grid_np = trunks_detection.extrapolate_full_grid(optimized_grid_dim_x, optimized_grid_dim_y, optimized_orientation, optimized_shear,
+                                                           base_grid_origin=np.array(optimized_grid[0]) + np.array(crop_origin),
+                                                           image_width=image.shape[1], image_height=image.shape[0])
+
+        if viz_mode:
+            full_grid_image = cv_utils.draw_points_on_image(image, [elem for elem in full_grid_np.flatten() if type(elem) is tuple], color=(255, 0, 0))
+            viz_utils.show_image('full grid', full_grid_image)
 
 
+        ### WIP area
 
-        # DATA LOAD #
-        import pickle
-        with open(r'/home/omer/Downloads/obj_to_dump.pkl') as p:
-            obj_to_dump = pickle.load(p)
-        optimized_grid = obj_to_dump['optimized_grid']
-        optimized_grid_args = obj_to_dump['optimized_grid_args']
-        optimized_grid_dim_x, optimized_grid_dim_y, optimized_translation_x, optimized_translation_y, optimized_orientation, optimized_shear, optimized_sigma = optimized_grid_args
-        # E/O DATA LOAD #
+        scores_array_np = trunks_detection.get_grid_scores_array(full_grid_np, image, optimized_sigma)
+
+        pattern_np = np.ones((9, 10), dtype=np.int8)
+        pattern_np[0:5, 0] = -1
 
 
+        pattern_origin = trunks_detection.fit_pattern_on_grid(scores_array_np, pattern_np)
+        pattern_coordinates_np = full_grid_np[pattern_origin[0] : pattern_origin[0] + pattern_np.shape[0],
+                                           pattern_origin[1] : pattern_origin[1] + pattern_np.shape[1]]
 
-        alpha = np.arcsin(optimized_shear)
+        if viz_mode:
+            pattern_points = pattern_coordinates_np[pattern_np != -1]
+            semantic_image = cv_utils.draw_points_on_image(image, pattern_points, color=(255, 255, 255))
+            for i in range(pattern_coordinates_np.shape[0]):
+                for j in range(pattern_coordinates_np.shape[1]):
+                    if pattern_np[(i, j)] == -1:
+                        continue
+                    trunk_coordinates = (int(pattern_coordinates_np[(i, j)][0]) + 15, int(pattern_coordinates_np[(i, j)][1]) + 15)
+                    tree_label = '%d/%s' % (j + 1, chr(65 + (pattern_coordinates_np.shape[0] - 1 - i)))
+                    cv2.putText(semantic_image, tree_label, trunk_coordinates, fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                                fontScale=2, color=(255, 255, 255), thickness=8, lineType=cv2.LINE_AA)
 
+            viz_utils.show_image('semantic', semantic_image)
 
-        # full_grid_optimized_translation_x = optimized_translation_x + np.array(crop_origin)[0]
-        # full_grid_optimized_translation_y = optimized_translation_y + np.array(crop_origin)[1]
-        #
-        # vertical_delta = optimized_grid_dim_x * np.cos(alpha)
-        # horizontal_delta = optimized_grid_dim_y * np.sin(alpha)
+        # TODO: consider adding one additional line per the bottom isle (the one for cars) of the empty ilse (-1's)
 
-
-        ####################
-        optimized_grid_shifted_origin = np.array(optimized_grid[0]) + np.array(crop_origin)
-        ####################
-
-        optimized_grid_shifted = np.array(optimized_grid) + np.array(crop_origin)
-
-        full_grid = trunks_detection.get_essential_grid(optimized_grid_dim_x, optimized_grid_dim_y, optimized_shear, optimized_orientation, n=3 * N)
-        full_grid = np.array(full_grid) - np.array(full_grid[0]) + optimized_grid_shifted_origin # TODO: KEEPPPPPPPPPPPPPPPP
-
-        rotation_pivot = (full_grid[0][0], full_grid[0][1])
-
-        rotation_mat = np.insert(cv2.getRotationMatrix2D(rotation_pivot, (-1) * optimized_orientation, scale=1.0), [2], [0, 0, 1], axis=0) # TODO: * (-1) ?
-        full_grid_np = full_grid.reshape(-1, 1, 2)
-        rotated_full_grid_np = cv2.perspectiveTransform(full_grid_np, rotation_mat)
-
-        rotated_full_grid = [tuple(elem) for elem in rotated_full_grid_np[:, 0, :].tolist()]
-        rotated_full_grid_np = (np.array(rotated_full_grid) - np.array([4 * optimized_grid_dim_x, 4 * (optimized_grid_dim_x * np.tan(alpha) + optimized_grid_dim_y)])).reshape(-1, 1, 2)
-
-        rotation_mat = np.insert(cv2.getRotationMatrix2D(rotation_pivot, optimized_orientation, scale=1.0), [2], [0, 0, 1], axis=0) # TODO: * (-1) ?
-        full_grid_np = cv2.perspectiveTransform(rotated_full_grid_np, rotation_mat)
-        full_grid = [tuple(elem) for elem in full_grid_np[:, 0, :].tolist()]
-
-        # full_grid = np.array(full_grid) - np.array(full_grid[0]) # TODO: KEEPPPPPPPPPPPPPPPP
-        # full_grid = np.array(full_grid) - np.array(full_grid[0]) + np.array([-50, -50]) # TODO: KEEPPPPPPPPPPPPPPPP
-
-        stam = cv_utils.draw_points_on_image(image, full_grid, color=(0, 0, 255))
-        stam = cv_utils.draw_points_on_image(stam, optimized_grid_shifted, color=(255, 0, 0))
-        viz_utils.show_image('stam', stam)
-
-        # TODO: you must filter out points with negative coordinates
-        break
-        # interpolated_grid_full_image = {}
-        # for key in ordered_grid:
-        #     ordered_grid[key] = np.array(ordered_grid[key]) + np.array(crop_origin)
-        # optimized_grid_image = cv_utils.draw_points_on_image(image, ordered_grid.values(), color=(255, 0, 0))
-
-
-        # horizontal_delta = 1.0 * (ordered_grid[(N - 1, 0)][1] - ordered_grid[(0, 0)][1]) / N
-        # vertical_delta = 1.0 * (ordered_grid[(0, N - 1)][0] - ordered_grid[(0, 0)][0]) / N
-        # full_grid_origin_x = ordered_grid[(0, 0)][0] % vertical_delta
-        # full_grid_origin_y = ordered_grid[(0, 0)][1] % horizontal_delta
-
-
-        # diff_vector = ordered_grid[(0, 0)] - ordered_grid[(0, N - 1)]
-        # alpha = np.arctan2(diff_vector[1], diff_vector[0]) # TODO: can use shear for that!
-        # d = np.sqrt((upper_right[0] - upper_left[0]) ** 2 + (upper_right[1] - upper_left[1]) ** 2) / N
-
-
-        # full_grid_origin_x = ordered_grid[(0, 0)][1] - horizontal_delta
-        # full_grid_translation_x = ordered_grid[(0, 0)][0]
-        # full_grid_origin_y = ordered_grid[(0, 0)][0] - vertical_delta
-        # full_grid_translation_y = ordered_grid[(0, 0)][1]
-
-        full_grid = trunks_detection.get_grid(optimized_grid_dim_x, optimized_grid_dim_y,
-                                              (optimized_translation_x + crop_origin[0], optimized_translation_y + crop_origin[1]), optimized_orientation, optimized_shear, n=6)
-        # upper_left = np.array(interpolated_grid[(0, 0)])
-        # upper_right = np.array(interpolated_grid[(0, N - 1)])
-
-
-        # new_point = np.array([upper_right[0] + d * np.cos(alpha), upper_right[1] + d * np.sin(alpha)])
-        # points_to_draw = [tuple(new_point), tuple(upper_right), tuple(upper_left)]
-        stam = cv_utils.draw_points_on_image(image, full_grid, color=(0, 0, 255))
-        # stam = cv_utils.draw_points_on_image(stam, ordered_grid.values(), color=(255, 0, 0))
-        stam = cv_utils.draw_points_on_image(stam, [ordered_grid[(0,0)], ordered_grid[0,5]], color=(255, 0, 0))
-        # stam = cv_utils.draw_points_on_image(image, [(full_grid_origin_x, full_grid_origin_y)], color=(0, 0, 255))
-        viz_utils.show_image('stam', stam)
         print ('end of iteration')
         break
