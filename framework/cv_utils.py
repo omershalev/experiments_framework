@@ -88,6 +88,20 @@ def mark_rectangle_on_image(image, points):
     return image_with_rectangle
 
 
+def draw_points_on_image(image, points_list, color, radius=15):
+    image_copy = image.copy()
+    for point in points_list:
+        cv2.circle(image_copy, (int(point[0]), int(point[1])), radius, color=color, thickness=-1)
+    return image_copy
+
+
+def draw_lines_on_image(image, lines_list, color, thickness=5):
+    image_copy = image.copy()
+    for point1, point2 in lines_list:
+        cv2.line(image_copy, (int(point1[0]), int(point1[1])), (int(point2[0]), int(point2[1])), color=color, thickness=thickness)
+    return image_copy
+
+
 def get_bounding_box(image, points, expand_ratio=0.0):
     x, y, w, h = cv2.boundingRect(np.array(points))
     upper_left_x = max(0, x - int(expand_ratio*w))
