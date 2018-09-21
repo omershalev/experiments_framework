@@ -42,7 +42,7 @@ if __name__ == '__main__':
             viz_utils.show_image('vertical rows', vertical_rows_image)
 
         # Get tree centroids
-        centroids, rotated_centroids = trunks_detection.find_tree_centroids(cropped_image, correction_angle=orientation * (-1))
+        centroids, rotated_centroids, _, _ = trunks_detection.find_tree_centroids(cropped_image, correction_angle=orientation * (-1))
         if viz_mode:
             # TODO: visualize the cum sum graphs
             vertical_rows_centroids_image = cv_utils.draw_points_on_image(vertical_rows_image, itertools.chain.from_iterable(rotated_centroids), color=(0, 0, 255))
@@ -88,7 +88,7 @@ if __name__ == '__main__':
             viz_utils.show_image('filter result', filter_result)
 
         # OPTIMIZATION TODO: improve and arrange
-        opt = trunks_detection.TrunksGridOptimization(grid_dim_x, grid_dim_y, translation, orientation, shear, sigma, cropped_image, n=N)
+        opt = trunks_detection._TrunksGridOptimization(grid_dim_x, grid_dim_y, translation, orientation, shear, sigma, cropped_image, n=N)
         nm = NelderMead(opt.target, opt.get_params())
         optimized_grid_args, _ = nm.maximize(n_iter=30)
         optimized_grid_dim_x, optimized_grid_dim_y, optimized_translation_x, optimized_translation_y, optimized_orientation, optimized_shear, optimized_sigma = optimized_grid_args

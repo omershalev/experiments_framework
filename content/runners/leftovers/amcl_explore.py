@@ -10,6 +10,7 @@ if __name__ == '__main__':
     ros_utils.start_master()
 
 
+    ros_utils.launch_rviz(r'/home/omer/.rviz/omer.rviz') # TODO: move the config to another location
 
 
     ros_utils.launch(package='localization', launch_file='static_identity_tf.launch',
@@ -30,10 +31,9 @@ if __name__ == '__main__':
     #                  argv={'frame_id': 'map', 'child_frame_id': 'odom'})
 
 
-    _, bag_duration = ros_utils.play_bag('/home/omer/Downloads/19-03-5_simple_trajectory_12.bag')
-    # time.sleep(bag_duration)
+    _, bag_duration = ros_utils.play_bag('/home/omer/Downloads/19-03-5_simple_trajectory_17.bag')
+    time.sleep(bag_duration)
 
-    time.sleep(600)
-
+    ros_utils.kill_rviz()
 
     ros_utils.kill_master()
