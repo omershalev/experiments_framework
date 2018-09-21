@@ -10,7 +10,7 @@ from computer_vision import segmentation
 from framework.experiment import Experiment
 from framework import viz_utils
 from framework import cv_utils
-
+from framework.utils import ExperimentFailure
 
 class TrunksDetectionExperiment(Experiment):
 
@@ -22,6 +22,7 @@ class TrunksDetectionExperiment(Experiment):
 
         viz_mode = kwargs.get('viz_mode')
 
+        '''
         # Read image
         image = cv2.imread(self.data_sources)
         cv2.imwrite(os.path.join(self.repetition_dir, 'image.jpg'), image)
@@ -85,6 +86,8 @@ class TrunksDetectionExperiment(Experiment):
 
         # Find translation of the grid
         positioned_grid, translation, drift_vectors = trunks_detection.find_min_mse_position(centroids, essential_grid, cropped_image.shape[1], cropped_image.shape[0])
+        if positioned_grid is None:
+            raise ExperimentFailure
         positioned_grid_image = cv_utils.draw_points_on_image(cropped_image, positioned_grid, color=(255, 0, 0), radius=20)
         positioned_grid_image = cv_utils.draw_points_on_image(positioned_grid_image, centroids, color=(0, 0, 255), radius=10)
         positioned_grid_image = cv_utils.draw_lines_on_image(positioned_grid_image, drift_vectors, color=(255, 255, 0), thickness=3)
@@ -105,11 +108,17 @@ class TrunksDetectionExperiment(Experiment):
         if viz_mode:
             viz_utils.show_image('gaussians filter', gaussians_filter)
             viz_utils.show_image('filter output', filter_output)
-        # TODO: if 7x7 is not feasible, consider taking a 7x6 or 8x6 grid - this might help...
 
         # Optimize the grid
         optimized_grid, optimized_grid_args = trunks_detection.optimize_grid(grid_dim_x, grid_dim_y, translation, orientation, shear, sigma, cropped_image, n=self.params['grid_size_for_optimization'])
         optimized_grid_dim_x, optimized_grid_dim_y, optimized_translation_x, optimized_translation_y, optimized_orientation, optimized_shear, optimized_sigma = optimized_grid_args
+        self.results[self.repetition_id] = {'optimized_grid_dim_x': optimized_grid_dim_x,
+                                            'optimized_grid_dim_y': optimized_grid_dim_y,
+                                            'optimized_translation_x': optimized_translation_x,
+                                            'optimized_translation_y': optimized_translation_y,
+                                            'optimized_orientation': optimized_orientation,
+                                            'optimized_shear': optimized_shear,
+                                            'optimized_sigma': optimized_sigma}
         optimized_grid_image = cv_utils.draw_points_on_image(cropped_image, optimized_grid, color=(0, 255, 0))
         optimized_grid_image = cv_utils.draw_points_on_image(optimized_grid_image, positioned_grid, color=(255, 0, 0))
         cv2.imwrite(os.path.join(self.repetition_dir, 'optimized_grid.jpg'), optimized_grid_image)
@@ -128,35 +137,84 @@ class TrunksDetectionExperiment(Experiment):
 
         # Match given pattern to grid
         scores_array_np = trunks_detection.get_grid_scores_array(full_grid_np, image, optimized_sigma)
-        pattern_np = self.params['pattern']
-        pattern_origin = trunks_detection.fit_pattern_on_grid(scores_array_np, pattern_np)
-        pattern_coordinates_np = full_grid_np[pattern_origin[0] : pattern_origin[0] + pattern_np.shape[0],
-                                           pattern_origin[1] : pattern_origin[1] + pattern_np.shape[1]]
-        pattern_points = pattern_coordinates_np[pattern_np != -1]
-        semantic_image = cv_utils.draw_points_on_image(image, pattern_points, color=(255, 255, 255))
-        for i in range(pattern_coordinates_np.shape[0]):
-            for j in range(pattern_coordinates_np.shape[1]):
-                if pattern_np[(i, j)] == -1:
+        orchard_pattern_np = self.params['pattern']
+        pattern_origin, pattern_match_score = trunks_detection.fit_pattern_on_grid(scores_array_np, orchard_pattern_np)
+        if pattern_origin is None:
+            raise ExperimentFailure
+        self.results[self.repetition_id]['pattern_match_score'] = pattern_match_score
+        trunk_coordinates_np = full_grid_np[pattern_origin[0] : pattern_origin[0] + orchard_pattern_np.shape[0],
+                                              pattern_origin[1] : pattern_origin[1] + orchard_pattern_np.shape[1]]
+
+        trunk_points_list = trunk_coordinates_np[orchard_pattern_np != -1]
+
+        trunk_coordinates_np[orchard_pattern_np == -1] = np.nan
+        self.results[self.repetition_id]['trunk_points_list'] = trunk_points_list
+        semantic_image = cv_utils.draw_points_on_image(image, trunk_points_list, color=(255, 255, 255))
+        for i in range(trunk_coordinates_np.shape[0]):
+            for j in range(trunk_coordinates_np.shape[1]):
+                if type(trunk_coordinates_np[(i, j)]) is not tuple:
                     continue
-                trunk_coordinates = (int(pattern_coordinates_np[(i, j)][0]) + 15, int(pattern_coordinates_np[(i, j)][1]) + 15)
-                tree_label = '%d/%s' % (j + 1, chr(65 + (pattern_coordinates_np.shape[0] - 1 - i)))
+                trunk_coordinates = (int(trunk_coordinates_np[(i, j)][0]) + 15, int(trunk_coordinates_np[(i, j)][1]) + 15)
+                tree_label = '%d/%s' % (j + 1, chr(65 + (trunk_coordinates_np.shape[0] - 1 - i)))
                 cv2.putText(semantic_image, tree_label, trunk_coordinates, fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                             fontScale=2, color=(255, 255, 255), thickness=8, lineType=cv2.LINE_AA)
         cv2.imwrite(os.path.join(self.repetition_dir, 'semantic_image.jpg'), semantic_image)
         if viz_mode:
             viz_utils.show_image('semantic', semantic_image)
 
+        import pickle
+        pickle_obj = {'image': image, 'trunk_coordinates_np': trunk_coordinates_np, 'optimized_sigma': optimized_sigma, 'orchard_pattern_np': orchard_pattern_np}
+        with open(r'/home/omer/Downloads/trunks_stuff.pkl', 'wb') as f:
+            pickle.dump(pickle_obj, f)
+        '''
+        import pickle
+        with open(r'/home/omer/Downloads/trunks_stuff.pkl') as f:
+            pickle_obj = pickle.load(f)
+        image = pickle_obj['image']
+        trunk_coordinates_np = pickle_obj['trunk_coordinates_np']
+        optimized_sigma = pickle_obj['optimized_sigma']
+        orchard_pattern_np = pickle_obj['orchard_pattern_np']
+
+        # Refine trunks locations
+        refined_trunk_coordinates_np = trunks_detection.refine_trunk_locations(image, trunk_coordinates_np, optimized_sigma)
+
+        refined_trunk_points_list = refined_trunk_coordinates_np[orchard_pattern_np != -1]
+        refined_trunk_coordinates_np[orchard_pattern_np == -1] = np.nan
+        # self.results[self.repetition_id]['trunk_points_list'] = trunk_points_list
+        refined_semantic_image = cv_utils.draw_points_on_image(image, refined_trunk_points_list, color=(255, 255, 255))
+        for i in range(refined_trunk_coordinates_np.shape[0]):
+            for j in range(refined_trunk_coordinates_np.shape[1]):
+                if type(refined_trunk_coordinates_np[(i, j)]) is not tuple:
+                    continue
+                trunk_coordinates = (int(refined_trunk_coordinates_np[(i, j)][0]) + 15, int(refined_trunk_coordinates_np[(i, j)][1]) + 15)
+                tree_label = '%d/%s' % (j + 1, chr(65 + (refined_trunk_coordinates_np.shape[0] - 1 - i)))
+                cv2.putText(refined_semantic_image, tree_label, trunk_coordinates, fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                            fontScale=2, color=(255, 255, 255), thickness=8, lineType=cv2.LINE_AA)
+        cv2.imwrite(os.path.join(self.repetition_dir, 'semantic_image_refined.jpg'), refined_semantic_image)
+        if viz_mode:
+            viz_utils.show_image('refined semantic', refined_semantic_image)
+
 
 if __name__ == '__main__':
 
     from content.data_pointers.lavi_april_18 import dji
 
-    image_key = dji.snapshots_60_meters.keys()[0]
-    data_descriptor = dji.snapshots_60_meters[image_key]
+    # image_key = dji.snapshots_80_meters.keys()[0]
+    # image_descriptor = dji.snapshots_80_meters[image_key]
+
     pattern_np = np.ones((9, 10), dtype=np.int8)
     pattern_np[0:5, 0] = -1
 
-    experiment = TrunksDetectionExperiment(name='trunks detection on %s' % image_key, data_sources=data_descriptor.path, working_dir=r'/home/omer/temp',
-                                           params={'crop_ratio': 1.0, 'initial_sigma_to_dim_y_ratio': 0.33, 'grid_size_for_optimization': 6,
-                                                   'pattern': pattern_np})
-    experiment.run(repetitions=5, viz_mode=False)
+    for image_key in dji.snapshots_80_meters.keys():
+        # if image_key in ['15-08-2', '15-08-2', '16-55-4', '16-55-5', '16-55-1', '16-55-2', '16-55-3']:
+        # if image_key not in ['15-53-3', '15-53-4']:
+        #     continue
+        image_descriptor = dji.snapshots_80_meters[image_key]
+        experiment = TrunksDetectionExperiment(name='trunks detection on %s' % image_key, data_sources=image_descriptor.path, working_dir=r'/home/omer/temp',
+                                               params={'crop_ratio': 0.8, 'initial_sigma_to_dim_y_ratio': 0.33, 'grid_size_for_optimization': 7,
+                                                       'pattern': pattern_np}, metadata={'image_key': image_key, 'altitude': 80})
+        experiment.run(repetitions=1, viz_mode=True)
+        break
+
+    # TODO: in the runner play with N, crop_ratio, initial_sigma_to_dim_y, maybe also with the pattern??
+    # TODO: allow larger range for NM parameters!!!!!!
