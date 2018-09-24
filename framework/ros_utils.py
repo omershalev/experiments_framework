@@ -98,7 +98,7 @@ def start_recording_bag(bag_path, topics=None):
     _logger.info('Starting bag recording')
     if topics is None:
         topics = ['-a']
-    record_proc = utils.new_process(['rosbag', 'record'] + topics + ['-O', bag_path])
+    record_proc = utils.new_process(['rosbag', 'record'] + topics + ['-O', '%s.bag' % bag_path])
     return record_proc
 
 
@@ -143,6 +143,7 @@ def save_image_to_map(image, resolution, map_name, dir_name):
                     'free_thresh' : 0.1}
     with open(os.path.join(dir_name, map_name + '.yaml'), 'w') as yaml_file:
         yaml.dump(yaml_content, yaml_file)
+    return os.path.join(dir_name, map_name + '.yaml'), os.path.join(dir_name, map_name + '.pgm')
 
 
 def video_to_bag(video_path, topic, frame_id, bag_path):
@@ -168,7 +169,7 @@ def video_to_bag(video_path, topic, frame_id, bag_path):
 
 def play_video_to_topic(video_path, topic, frame_id):
     class _VideoPlayer(object):
-        def __init__(self, video_path, topic, frame_id):
+        def __init__(self, video_path, topic, ros_frame_id):
             rospy.init_node('video_player')
             pub = rospy.Publisher(topic, Image, queue_size=1)
             cap = cv2.VideoCapture(video_path)
@@ -185,13 +186,11 @@ def play_video_to_topic(video_path, topic, frame_id):
                 message = cv_bridge.cv2_to_imgmsg(frame, encoding='bgr8')
                 message.header.seq = frame_idx
                 message.header.stamp = stamp
-                message.header.frame_id = frame_id
-                if frame_idx == 0:
-                    pub.publish(message)
-                else:
-                    delay = max(0, (video_timestamp - prev_video_timestamp) - (time.time() - prev_publish_time) - 3e-3)
+                message.header.frame_id = ros_frame_id
+                if frame_idx != 0:
+                    delay = max(0, (video_timestamp - prev_video_timestamp) - (time.time() - prev_publish_time) - 5e-2)
                     time.sleep(delay)
-                    pub.publish(message)
+                pub.publish(message)
                 prev_publish_time = time.time()
                 prev_video_timestamp = video_timestamp
                 frame_idx += 1
