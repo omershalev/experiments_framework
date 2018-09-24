@@ -6,8 +6,14 @@ from threading import Timer
 from joblib import Parallel, delayed
 import datetime
 
+import logger
 import config
 
+_logger = logger.get_logger()
+
+
+class ExperimentFailure(Exception):
+    pass
 
 def run_timeout_protected_process(command, timeout_in_seconds):
     proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -42,7 +48,8 @@ def kill_process(process_name):
 
 def create_new_execution_folder(name):
     execution_dir_name = '%s_%s' % (datetime.datetime.now().strftime('%Y%m%d-%H%M%S'), name)
-    execution_dir = os.path.join(config.base_output_path, execution_dir_name)
+    execution_dir = os.path.join(config.temp_output_path, execution_dir_name)
+    _logger.info('Storing execution outputs in %s' % execution_dir)
     os.mkdir(execution_dir)
     return execution_dir
 
@@ -63,14 +70,14 @@ def joblib_map(func, iterable):
 def slice_handler(slice_start, slice_stop, iterable_to_split, func):
     ret_values = []
     for idx in xrange(slice_start, slice_stop):
-        ret_values.append(func(iterable_to_split[idx]))
+        ret_values.append(func(*iterable_to_split[idx]))
     return ret_values
 
 
 def distribute_evenly_on_all_cores(func, iterable_to_split):
     split_step = len(iterable_to_split) / multiprocessing.cpu_count()
     slice_indices = range(0, len(iterable_to_split), split_step)
-    slice_indices[-1] = len(iterable_to_split)
+    slice_indices.append(len(iterable_to_split))
     slice_start_stop_tuples = [(slice_start, slice_stop) for slice_start, slice_stop in zip(slice_indices, slice_indices[1:])]
     joblib_ret_values = joblib_map(slice_handler, [(slice_start, slice_stop, iterable_to_split, func) for slice_start, slice_stop in slice_start_stop_tuples])
     ret = []
