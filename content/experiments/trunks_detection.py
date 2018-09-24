@@ -21,8 +21,6 @@ class TrunksDetectionExperiment(Experiment):
     def task(self, **kwargs):
 
         viz_mode = kwargs.get('viz_mode')
-
-        '''
         # Read image
         image = cv2.imread(self.data_sources)
         cv2.imwrite(os.path.join(self.repetition_dir, 'image.jpg'), image)
@@ -135,86 +133,75 @@ class TrunksDetectionExperiment(Experiment):
             viz_utils.show_image('full grid', full_grid_image)
 
 
-        # Match given pattern to grid
-        scores_array_np = trunks_detection.get_grid_scores_array(full_grid_np, image, optimized_sigma)
-        orchard_pattern_np = self.params['pattern']
-        pattern_origin, pattern_match_score = trunks_detection.fit_pattern_on_grid(scores_array_np, orchard_pattern_np)
+        # Match given orchard pattern to grid
+        full_grid_scores_np = trunks_detection.get_grid_scores_array(full_grid_np, image, optimized_sigma)
+        orchard_pattern_np = self.params['orchard_pattern']
+        pattern_origin, pattern_match_score = trunks_detection.fit_pattern_on_grid(full_grid_scores_np, orchard_pattern_np)
         if pattern_origin is None:
             raise ExperimentFailure
         self.results[self.repetition_id]['pattern_match_score'] = pattern_match_score
         trunk_coordinates_np = full_grid_np[pattern_origin[0] : pattern_origin[0] + orchard_pattern_np.shape[0],
-                                              pattern_origin[1] : pattern_origin[1] + orchard_pattern_np.shape[1]]
-
+                                            pattern_origin[1] : pattern_origin[1] + orchard_pattern_np.shape[1]]
         trunk_points_list = trunk_coordinates_np[orchard_pattern_np != -1]
-
         trunk_coordinates_np[orchard_pattern_np == -1] = np.nan
-        self.results[self.repetition_id]['trunk_points_list'] = trunk_points_list
-        semantic_image = cv_utils.draw_points_on_image(image, trunk_points_list, color=(255, 255, 255))
+        semantic_trunks_image = cv_utils.draw_points_on_image(image, trunk_points_list, color=(255, 255, 255))
         for i in range(trunk_coordinates_np.shape[0]):
             for j in range(trunk_coordinates_np.shape[1]):
-                if type(trunk_coordinates_np[(i, j)]) is not tuple:
+                if np.any(np.isnan(trunk_coordinates_np[(i, j)])):
                     continue
-                trunk_coordinates = (int(trunk_coordinates_np[(i, j)][0]) + 15, int(trunk_coordinates_np[(i, j)][1]) + 15)
+                label_coordinates = (int(trunk_coordinates_np[(i, j)][0]) + 15, int(trunk_coordinates_np[(i, j)][1]) + 15)
                 tree_label = '%d/%s' % (j + 1, chr(65 + (trunk_coordinates_np.shape[0] - 1 - i)))
-                cv2.putText(semantic_image, tree_label, trunk_coordinates, fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                cv2.putText(semantic_trunks_image, tree_label, label_coordinates, fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                             fontScale=2, color=(255, 255, 255), thickness=8, lineType=cv2.LINE_AA)
-        cv2.imwrite(os.path.join(self.repetition_dir, 'semantic_image.jpg'), semantic_image)
+        cv2.imwrite(os.path.join(self.repetition_dir, 'semantic_trunks.jpg'), semantic_trunks_image)
         if viz_mode:
-            viz_utils.show_image('semantic', semantic_image)
+            viz_utils.show_image('semantic trunks', semantic_trunks_image)
 
-        import pickle
-        pickle_obj = {'image': image, 'trunk_coordinates_np': trunk_coordinates_np, 'optimized_sigma': optimized_sigma, 'orchard_pattern_np': orchard_pattern_np}
-        with open(r'/home/omer/Downloads/trunks_stuff.pkl', 'wb') as f:
-            pickle.dump(pickle_obj, f)
-        '''
-        import pickle
-        with open(r'/home/omer/Downloads/trunks_stuff.pkl') as f:
-            pickle_obj = pickle.load(f)
-        image = pickle_obj['image']
-        trunk_coordinates_np = pickle_obj['trunk_coordinates_np']
-        optimized_sigma = pickle_obj['optimized_sigma']
-        orchard_pattern_np = pickle_obj['orchard_pattern_np']
-
-        # Refine trunks locations
+        # Refine trunk locations
         refined_trunk_coordinates_np = trunks_detection.refine_trunk_locations(image, trunk_coordinates_np, optimized_sigma)
-
         refined_trunk_points_list = refined_trunk_coordinates_np[orchard_pattern_np != -1]
         refined_trunk_coordinates_np[orchard_pattern_np == -1] = np.nan
-        # self.results[self.repetition_id]['trunk_points_list'] = trunk_points_list
-        refined_semantic_image = cv_utils.draw_points_on_image(image, refined_trunk_points_list, color=(255, 255, 255))
+        refined_semantic_trunks_image = cv_utils.draw_points_on_image(image, refined_trunk_points_list, color=(255, 255, 255))
+        semantic_trunks = {}
         for i in range(refined_trunk_coordinates_np.shape[0]):
             for j in range(refined_trunk_coordinates_np.shape[1]):
-                if type(refined_trunk_coordinates_np[(i, j)]) is not tuple:
+                if np.any(np.isnan(refined_trunk_coordinates_np[(i, j)])):
                     continue
-                trunk_coordinates = (int(refined_trunk_coordinates_np[(i, j)][0]) + 15, int(refined_trunk_coordinates_np[(i, j)][1]) + 15)
+                trunk_coordinates = (int(refined_trunk_coordinates_np[(i, j)][0]), int(refined_trunk_coordinates_np[(i, j)][1]))
+                label_coordinates = tuple(np.array(trunk_coordinates) + np.array([15, 15]))
+                semantic_trunks['%d/%s' % (j + 1, chr(65 + (trunk_coordinates_np.shape[0] - 1 - i)))] = trunk_coordinates
                 tree_label = '%d/%s' % (j + 1, chr(65 + (refined_trunk_coordinates_np.shape[0] - 1 - i)))
-                cv2.putText(refined_semantic_image, tree_label, trunk_coordinates, fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                cv2.putText(refined_semantic_trunks_image, tree_label, label_coordinates, fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                             fontScale=2, color=(255, 255, 255), thickness=8, lineType=cv2.LINE_AA)
-        cv2.imwrite(os.path.join(self.repetition_dir, 'semantic_image_refined.jpg'), refined_semantic_image)
+        cv2.imwrite(os.path.join(self.repetition_dir, 'refined_semantic_trunks.jpg'), refined_semantic_trunks_image)
+        self.results[self.repetition_id]['semantic_trunks'] = semantic_trunks
         if viz_mode:
-            viz_utils.show_image('refined semantic', refined_semantic_image)
+            viz_utils.show_image('refined semantic trunks', refined_semantic_trunks_image)
+        print ('end')
 
 
 if __name__ == '__main__':
+    pass
 
-    from content.data_pointers.lavi_april_18 import dji
-
-    # image_key = dji.snapshots_80_meters.keys()[0]
-    # image_descriptor = dji.snapshots_80_meters[image_key]
-
-    pattern_np = np.ones((9, 10), dtype=np.int8)
-    pattern_np[0:5, 0] = -1
-
-    for image_key in dji.snapshots_80_meters.keys():
-        # if image_key in ['15-08-2', '15-08-2', '16-55-4', '16-55-5', '16-55-1', '16-55-2', '16-55-3']:
-        # if image_key not in ['15-53-3', '15-53-4']:
-        #     continue
-        image_descriptor = dji.snapshots_80_meters[image_key]
-        experiment = TrunksDetectionExperiment(name='trunks detection on %s' % image_key, data_sources=image_descriptor.path, working_dir=r'/home/omer/temp',
-                                               params={'crop_ratio': 0.8, 'initial_sigma_to_dim_y_ratio': 0.33, 'grid_size_for_optimization': 7,
-                                                       'pattern': pattern_np}, metadata={'image_key': image_key, 'altitude': 80})
-        experiment.run(repetitions=1, viz_mode=True)
-        break
+    # TODO: remove this __main__!!!
+    # from content.data_pointers.lavi_april_18 import dji
+    #
+    # # image_key = dji.snapshots_80_meters.keys()[0]
+    # # image_descriptor = dji.snapshots_80_meters[image_key]
+    #
+    # pattern_np = np.ones((9, 10), dtype=np.int8)
+    # pattern_np[0:5, 0] = -1
+    #
+    # for image_key in dji.snapshots_80_meters.keys():
+    #     # if image_key in ['15-08-2', '15-08-2', '16-55-4', '16-55-5', '16-55-1', '16-55-2', '16-55-3']:
+    #     # if image_key not in ['15-53-3', '15-53-4']:
+    #     #     continue
+    #     image_descriptor = dji.snapshots_80_meters[image_key]
+    #     experiment = TrunksDetectionExperiment(name='trunks detection on %s' % image_key, data_sources=image_descriptor.path, working_dir=r'/home/omer/temp',
+    #                                            params={'crop_ratio': 0.8, 'initial_sigma_to_dim_y_ratio': 0.33, 'grid_size_for_optimization': 7,
+    #                                                    'pattern': pattern_np}, metadata={'image_key': image_key, 'altitude': 80})
+    #     experiment.run(repetitions=1, viz_mode=True)
+    #     break
 
     # TODO: in the runner play with N, crop_ratio, initial_sigma_to_dim_y, maybe also with the pattern??
     # TODO: allow larger range for NM parameters!!!!!!
