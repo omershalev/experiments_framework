@@ -125,10 +125,10 @@ def center_crop(image, x_ratio, y_ratio):
 def crop_region(image, x_center, y_center, x_pixels, y_pixels):
     x_size = image.shape[1]
     y_size = image.shape[0]
-    image = image[max(0, y_center - y_pixels / 2) : min(y_size, y_center + y_pixels / 2),
-                  max(0, x_center - x_pixels / 2) : min(x_size, x_center + x_pixels / 2)]
-    upper_left = (max(0, x_center - x_pixels / 2), max(0, y_center - y_pixels / 2))
-    lower_right = (min(x_size, x_center + x_pixels / 2), min(y_size, y_center + y_pixels / 2))
+    image = image[max(0, int(y_center - y_pixels / 2)) : min(y_size, int(y_center + y_pixels / 2)),
+                  max(0, int(x_center - x_pixels / 2)) : min(x_size, int(x_center + x_pixels / 2))]
+    upper_left = (max(0, int(x_center - x_pixels / 2)), max(0, int(y_center - y_pixels / 2)))
+    lower_right = (min(x_size, int(x_center + x_pixels / 2)), min(y_size, int(y_center + y_pixels / 2)))
     return image, upper_left, lower_right
 
 
@@ -149,7 +149,7 @@ def get_coordinates_list_from_scan_ranges(scan_ranges, center_x, center_y, min_a
     return coordinates_list
 
 
-def warp_image(image, points_in_image, points_in_baseline, method='homographic'):
+def warp_image(image, points_in_image, points_in_baseline, method='affine'):
     if method == 'homographic':
         h, _ = cv2.findHomography(np.float32(points_in_image), np.float32(points_in_baseline))
         warpped_image = cv2.warpPerspective(image, h, (image.shape[1], image.shape[0]))
@@ -167,6 +167,9 @@ def warp_image(image, points_in_image, points_in_baseline, method='homographic')
 def calculate_image_diff(image1, image2, method='mse', x_crop_ratio=0.3, y_crop_ratio=0.3):
     if image1.shape != image2.shape:
         raise Exception('Two images must have the same dimension')
+    if len(image1.shape) == 3:
+        image1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
+        image2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
     image1 = center_crop(image1, x_crop_ratio, y_crop_ratio)
     image2 = center_crop(image2, x_crop_ratio, y_crop_ratio)
     if method == 'mse':
