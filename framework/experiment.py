@@ -1,23 +1,26 @@
 import os
 import datetime
 import pickle
-import hashlib
 import json
 from collections import OrderedDict
 
 import logger
 import numpy as np
 
+from utils import ExperimentFailure
+
 _logger = logger.get_logger()
 
 
 class Experiment(object):
-    def __init__(self, name, data_sources, working_dir, params=None):
+    def __init__(self, name, data_sources, working_dir, params=None, metadata=None):
         self.name = name
         self.data_sources = data_sources
         self.working_dir = working_dir
         self.params = params
+        self.metadata = metadata
         self.results = OrderedDict()
+        self.valid_repetitions = []
         _logger.info('New experiment: %s' % self.name)
 
     def clean_env(self):
@@ -43,23 +46,36 @@ class Experiment(object):
                 self.clean_env()
                 self.task(**kwargs)
                 if self.is_valid():
-                    _logger.info('Valid execution')
+                    _logger.info('Valid repetition')
+                    self.valid_repetitions.append(self.repetition_id)
                     self.repetition_id += 1
                 else:
-                    _logger.info('Invalid execution')
+                    _logger.info('Invalid repetition')
                     os.rename(self.repetition_dir, '%s_invalid' % self.repetition_dir)
                     self.repetition_id += 1
             def make_serializable(value):
+                if type(value) is dict:
+                    for k, v in value.items():
+                        value[k] = make_serializable(v)
+                    return value
                 if type(value) is np.ndarray:
                     return value.tolist()
                 return value
-            params_to_dump = {key: make_serializable(value) for key, value in self.params.items()}
+            params_to_dump = {key: make_serializable(value) for key, value in self.params.items()} if self.params is not None else None
+            metadata_to_dump = {key: make_serializable(value) for key, value in self.metadata.items()} if self.metadata is not None else None
             results_to_dump = {key: make_serializable(value) for key, value in self.results.items()}
-            json_obj = {'name': self.name,
-                        'data_sources': self.data_sources,
-                        'params': params_to_dump,
-                        'results': results_to_dump}
-            with open(os.path.join(self.experiment_dir, 'experiment_metadata.json'), 'w') as json_file:
-                json.dump(json_obj, json_file, indent=4)
+            summary = {'name': self.name,
+                       'data_sources': self.data_sources,
+                       'params': params_to_dump,
+                       'metadata': metadata_to_dump,
+                       'results': results_to_dump,
+                       'experiment_dir': self.experiment_dir}
+            self.summary = summary
+            with open(os.path.join(self.experiment_dir, 'experiment_summary.json'), 'w') as f:
+                json.dump(summary, f, indent=4)
+            with open(os.path.join(self.experiment_dir, 'numpy_random_state.pkl'), 'wb') as f:
+                pickle.dump(np.random.get_state(), f)
+        except ExperimentFailure:
+            _logger.info('Experiment failed, continuing execution')
         finally:
             self.clean_env()
