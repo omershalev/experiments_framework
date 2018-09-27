@@ -2,6 +2,7 @@ import time
 import os
 import cv2
 import numpy as np
+import pandas as pd
 
 from framework.experiment import Experiment
 from framework import ros_utils
@@ -47,13 +48,14 @@ class AmclSnapshotsExperiment(Experiment):
         trunk_radius = 15 # TODO: change!
         wp1 = tuple(np.array(semantic_trunks['7/A']) + np.array([trunk_radius + 70, 0]))
         wp2 = tuple(np.array(semantic_trunks['7/G']) + np.array([trunk_radius + 115, 0]))
-        wp3 = tuple(np.array(semantic_trunks['7/A']) + np.array([trunk_radius + 70, 0]))
-        wp4 = tuple(np.array(semantic_trunks['6/A']) + np.array([trunk_radius + 70, 0]))
-        wp5 = tuple(np.array(semantic_trunks['6/G']) + np.array([trunk_radius + 115, 0]))
-        wp6 = tuple(np.array(semantic_trunks['6/A']) + np.array([trunk_radius + 70, 0]))
-        waypoints = [wp1, wp2, wp3, wp4, wp5, wp6] # TODO: rearrange
+        # wp3 = tuple(np.array(semantic_trunks['7/A']) + np.array([trunk_radius + 70, 0]))
+        # wp4 = tuple(np.array(semantic_trunks['6/A']) + np.array([trunk_radius + 70, 0]))
+        # wp5 = tuple(np.array(semantic_trunks['6/G']) + np.array([trunk_radius + 115, 0]))
+        # wp6 = tuple(np.array(semantic_trunks['6/A']) + np.array([trunk_radius + 70, 0]))
+        # waypoints = [wp1, wp2, wp3, wp4, wp5, wp6] # TODO: rearrange
+        waypoints = [wp1, wp2] # TODO: rearrange
         optimized_sigma = 90.39 # TODO: rearrange
-        freq = 32 # TODO: rearrange and consider what frequency to use!!!
+        freq = 30 # TODO: rearrange and consider what frequency to use!!!
         experiment = PathPlanningExperiment(name='path_planning',
                                             data_sources={'map_image_path': origin_map_image_path, 'trunk_points_list': semantic_trunks.values(),
                                                           'map_upper_left': upper_left, 'map_lower_right': lower_right, 'waypoints': waypoints},
@@ -120,8 +122,9 @@ class AmclSnapshotsExperiment(Experiment):
             raise Exception('Unknown odometry source %s' % odometry_source)
 
         # Start recording output bag
-        self.results['output_bag_path'] = os.path.join(self.repetition_dir, self.name)
-        ros_utils.start_recording_bag(os.path.join(self.repetition_dir, '%s_output' % self.name), ['/amcl_pose', '/particlecloud', '/scanmatcher_pose', '/ugv_pose'])
+        output_bag_path = os.path.join(self.repetition_dir, '%s_output.bag' % self.name)
+        self.results[self.repetition_id]['output_bag_path'] = output_bag_path
+        ros_utils.start_recording_bag(output_bag_path, ['/amcl_pose', '/particlecloud', '/scanmatcher_pose', '/ugv_pose'])
 
         # Start input bag and wait
         _, bag_duration = ros_utils.play_bag(trajectory_bag_path)
@@ -134,14 +137,23 @@ class AmclSnapshotsExperiment(Experiment):
         if launch_rviz:
             ros_utils.kill_rviz()
 
-
-if __name__ == '__main__':
-    # TODO: remove this __main__
-    # TODO: maps path has changed (that's now in results!!!!!); trajectories were also moved
-    # experiment = AmclSnapshotsExperiment(name='amcl_exploration',
-    #                                      data_sources={'trajectory_bag_path': r'/home/omer/orchards_ws/output/20180911-003527_trajectory_tagging_2/15-53-1_random_trajectory.bag',
-    #                                                    'localization_image_path': r'/home/omer/orchards_ws/data/lavi_apr_18/maps/snapshots_80_meters/15-53-1_map.pgm',
-    #                                                    'map_yaml_path': r'/home/omer/orchards_ws/data/lavi_apr_18/maps/snapshots_80_meters/15-53-1_map.yaml'},
-    #                                      working_dir=r'/home/omer/temp')
-    # experiment.run(repetitions=1, launch_rviz=True)
-    pass
+        # Generate results dafaframe
+        ground_truth_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/ugv_pose', fields=['x', 'y'])
+        ground_truth_df['x'] = ground_truth_df['x'].apply(lambda cell: cell * config.top_view_resolution)
+        ground_truth_df['y'] = ground_truth_df['y'].apply(lambda cell: (localization_image.shape[0] - cell) * config.top_view_resolution)  # TODO: is this the height of the localization image??
+        ground_truth_df.columns = ['ground_truth_x[%d]' % self.repetition_id, 'ground_truth_y[%d]' % self.repetition_id]
+        amcl_pose_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/amcl_pose', fields=['pose.pose.position.x', 'pose.pose.position.y'])
+        amcl_pose_df.columns = ['amcl_pose_x[%d]' % self.repetition_id, 'amcl_pose_y[%d]' % self.repetition_id]
+        def covariance_norm(covariance_mat): # TODO: think about this with Amir
+            return np.linalg.norm(np.array(covariance_mat).reshape(6, 6))
+        amcl_covariance_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/amcl_pose', fields=['pose.covariance'], aggregation=covariance_norm)
+        amcl_covariance_df.columns = ['amcl_covariance_norm[%d]' % self.repetition_id]
+        amcl_results_df = pd.concat([ground_truth_df, amcl_pose_df, amcl_covariance_df], axis=1)
+        amcl_results_df['ground_truth_x[%d]' % self.repetition_id] = amcl_results_df['ground_truth_x[%d]' % self.repetition_id].interpolate()  # TODO: try method='time'
+        amcl_results_df['ground_truth_y[%d]' % self.repetition_id] = amcl_results_df['ground_truth_y[%d]' % self.repetition_id].interpolate()  # TODO: try method='time'
+        error = np.sqrt((amcl_results_df['ground_truth_x[%d]' % self.repetition_id] - amcl_results_df['amcl_pose_x[%d]' % self.repetition_id]) ** 2 + \
+                        (amcl_results_df['ground_truth_y[%d]' % self.repetition_id] - amcl_results_df['amcl_pose_y[%d]' % self.repetition_id]) ** 2)
+        amcl_results_df['amcl_pose_error[%d]' % self.repetition_id] = error
+        amcl_results_path = os.path.join(self.repetition_dir, 'amcl_results.csv')
+        amcl_results_df.to_csv(amcl_results_path)
+        self.results[self.repetition_id]['amcl_results_path'] = amcl_results_path
