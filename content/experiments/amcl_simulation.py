@@ -12,12 +12,52 @@ from framework import config
 from content.experiments.path_planning import PathPlanningExperiment
 from computer_vision import maps_generation
 
-class AmclSnapshotsExperiment(Experiment):
+class AmclSimulationExperiment(Experiment):
+
+    def launch_base_to_scan_static_tf(self, namespace):
+        ros_utils.launch(package='localization',
+                         launch_file='static_identity_tf.launch',
+                         argv={'ns': namespace, 'frame_id': 'base_link', 'child_frame_id': 'contours_scan_link'})
+
+    def launch_synthetic_scan_generator(self, localization_image_path, namespace):
+        ros_utils.launch(package='localization',
+                         launch_file='synthetic_scan_generator.launch',
+                         argv={'ns': namespace,
+                               'localization_image_path': localization_image_path,
+                               'min_angle': self.params['min_angle'],
+                               'max_angle': self.params['max_angle'],
+                               'samples_num': self.params['samples_num'],
+                               'min_distance': self.params['min_distance'],
+                               'max_distance': self.params['max_distance'],
+                               'resolution': self.params['resolution'],
+                               'r_primary_search_samples': self.params['r_primary_search_samples'],
+                               'r_secondary_search_step': self.params['r_secondary_search_step']})
+
+    def launch_map_server(self, map_yaml_path, namespace):
+        ros_utils.launch(package='localization',
+                         launch_file='map.launch',
+                         argv={'ns': namespace, 'map_yaml_path': map_yaml_path})
+        ros_utils.wait_for_rosout_message(node_name='%s/map_server' % namespace,
+                                          desired_message=r'Read a \d+ X \d+ map @ \d\.?\d+? m/cell',
+                                          is_regex=True)
+
+    def launch_amcl(self, namespace):
+        ros_utils.launch(package='localization', launch_file='amcl.launch', argv={'ns': namespace})
+        ros_utils.wait_for_rosout_message(node_name='%s/amcl' % namespace, desired_message='Done initializing likelihood field model.')
+
+    def launch_synthetic_odometry(self, namespace):
+        ros_utils.launch(package='localization', launch_file='synthetic_odometry.launch',
+                         argv={'ns': namespace,
+                               'resolution': self.params['resolution'],
+                               'noise_mu_x': self.params['odometry_noise_mu_x'],
+                               'noise_mu_y': self.params['odometry_noise_mu_y'],
+                               'noise_sigma_x': self.params['odometry_noise_sigma_x'],
+                               'noise_sigma_y': self.params['odometry_noise_sigma_y'],
+                               })
 
     def clean_env(self):
         utils.kill_process('amcl')
         ros_utils.kill_master()
-
 
     def task(self, **kwargs):
 
@@ -48,12 +88,12 @@ class AmclSnapshotsExperiment(Experiment):
         trunk_radius = 15 # TODO: change!
         wp1 = tuple(np.array(semantic_trunks['7/A']) + np.array([trunk_radius + 70, 0]))
         wp2 = tuple(np.array(semantic_trunks['7/G']) + np.array([trunk_radius + 115, 0]))
-        # wp3 = tuple(np.array(semantic_trunks['7/A']) + np.array([trunk_radius + 70, 0]))
-        # wp4 = tuple(np.array(semantic_trunks['6/A']) + np.array([trunk_radius + 70, 0]))
-        # wp5 = tuple(np.array(semantic_trunks['6/G']) + np.array([trunk_radius + 115, 0]))
-        # wp6 = tuple(np.array(semantic_trunks['6/A']) + np.array([trunk_radius + 70, 0]))
-        # waypoints = [wp1, wp2, wp3, wp4, wp5, wp6] # TODO: rearrange
-        waypoints = [wp1, wp2] # TODO: rearrange
+        wp3 = tuple(np.array(semantic_trunks['7/A']) + np.array([trunk_radius + 70, 0]))
+        wp4 = tuple(np.array(semantic_trunks['6/A']) + np.array([trunk_radius + 70, 0]))
+        wp5 = tuple(np.array(semantic_trunks['6/G']) + np.array([trunk_radius + 115, 0]))
+        wp6 = tuple(np.array(semantic_trunks['6/A']) + np.array([trunk_radius + 70, 0]))
+        waypoints = [wp1, wp2, wp3, wp4, wp5, wp6] # TODO: rearrange
+        # waypoints = [wp1, wp2] # TODO: rearrange
         optimized_sigma = 90.39 # TODO: rearrange
         freq = 30 # TODO: rearrange and consider what frequency to use!!!
         experiment = PathPlanningExperiment(name='path_planning',
@@ -75,51 +115,15 @@ class AmclSnapshotsExperiment(Experiment):
         if launch_rviz:
             ros_utils.launch_rviz(os.path.join(config.root_dir_path, 'src/experiments_framework/framework/amcl.rviz'))
 
-        # Launch base_link to contours_scan_link static TF
-        ros_utils.launch(package='localization',
-                         launch_file='static_identity_tf.launch',
-                         argv={'frame_id': 'base_link', 'child_frame_id': 'contours_scan_link'})
+        self.launch_base_to_scan_static_tf(namespace='canopies')
 
-        # Launch synthetic scan generator
-        ros_utils.launch(package='localization',
-                         launch_file='synthetic_scan_generator.launch',
-                         argv={'virtual_ugv_mode': True,
-                               'localization_image_path': localization_image_path,
-                               'min_angle': self.params['min_angle'],
-                               'max_angle': self.params['max_angle'],
-                               'samples_num': self.params['samples_num'],
-                               'min_distance': self.params['min_distance'],
-                               'max_distance': self.params['max_distance'],
-                               'resolution': self.params['resolution'],
-                               'r_primary_search_samples': self.params['r_primary_search_samples'],
-                               'r_secondary_search_step': self.params['r_secondary_search_step']})
+        self.launch_synthetic_scan_generator(localization_image_path, namespace='canopies')
 
-        # Launch map server
-        ros_utils.launch(package='localization',
-                         launch_file='map.launch',
-                         argv={'map_yaml_path': map_yaml_path})
+        self.launch_map_server(map_yaml_path, namespace='canopies')
 
-        # Wait for map server to load
-        ros_utils.wait_for_rosout_message(node_name='map_server',
-                                          desired_message=r'Read a \d+ X \d+ map @ \d\.?\d+? m/cell',
-                                          is_regex=True)
+        self.launch_amcl(namespace='canopies')
 
-        # Launch AMCL
-        ros_utils.launch(package='localization', launch_file='amcl.launch')
-
-        # Wait for AMCL to load
-        ros_utils.wait_for_rosout_message(node_name='amcl', desired_message='Done initializing likelihood field model.')
-
-        # Launch odometry
-        odometry_source = self.params['odometry_source']
-        if odometry_source == 'icp':
-            ros_utils.launch(package='localization', launch_file='icp.launch')
-        elif odometry_source == 'synthetic':
-            ros_utils.launch(package='localization', launch_file='synthetic_odometry.launch',
-                             argv={'resolution': self.params['resolution'],
-                                   'noise_sigma': self.params['odometry_noise_sigma']})
-        else:
-            raise Exception('Unknown odometry source %s' % odometry_source)
+        self.launch_synthetic_odometry(namespace='canopies')
 
         # Start recording output bag
         output_bag_path = os.path.join(self.repetition_dir, '%s_output.bag' % self.name)
