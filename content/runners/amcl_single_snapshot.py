@@ -3,6 +3,7 @@ import json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from collections import namedtuple
 
 from computer_vision import calibration
 from framework import utils
@@ -11,8 +12,16 @@ from content.experiments.amcl_simulation import AmclSimulationExperiment
 from content.data_pointers.lavi_april_18.dji import trunks_detection_results_dir, selected_trunks_detection_experiments_and_repetitions
 from content.data_pointers.lavi_april_18 import orchard_topology
 
+ExperimentConfig = namedtuple('ExperimentConfig', ['odometry_noise_mu_x', 'odometry_noise_mu_y', 'odometry_noise_sigma_x', 'odometry_noise_sigma_y', 'scan_noise_sigma'])
+
+############################################################################################################################
+#                                                    CONFIGURATION AREA                                                    #
+############################################################################################################################
 repetitions = 2
-result_samples_num = 10
+result_samples_num = 20
+experiment_configs_list = [ExperimentConfig(odometry_noise_mu_x=0.001, odometry_noise_mu_y=0,
+                                            odometry_noise_sigma_x=0.01, odometry_noise_sigma_y=0.01, scan_noise_sigma=0.1)]
+############################################################################################################################
 
 
 def get_results_samples(experiment, namespace):
@@ -47,6 +56,15 @@ def get_results_samples(experiment, namespace):
     return error_samples_df, covariance_norm_samples_df
 
 
+def plot_canopies_vs_trunks(plot_name, canopies_vector, trunks_vector, canopies_stds, trunks_stds):
+    plt.figure()
+    plt.errorbar(range(1, result_samples_num + 1), canopies_vector, yerr=canopies_stds, color='g')
+    plt.errorbar(range(1, result_samples_num + 1), trunks_vector, yerr=trunks_stds, color='r')
+    plt.xlim((0.8, result_samples_num + 0.2))
+    plt.tight_layout()
+    plt.savefig(os.path.join(experiment.experiment_dir, '%s.png' % plot_name))
+
+
 if __name__ == '__main__':
     execution_dir = utils.create_new_execution_folder('amcl_single_image')
 
@@ -64,13 +82,14 @@ if __name__ == '__main__':
         image_path = trunks_detection_summary['data_sources']
         image_key = trunks_detection_summary['metadata']['image_key']
         semantic_trunks = trunks_detection_summary['results'][str(trunks_detection_repetition)]['semantic_trunks']
+        experiment_config = experiment_configs_list[0] # TODO: change this!!!
         experiment = AmclSimulationExperiment(name='amcl_single_snapshot_on_%s' % image_key,
                                               data_sources={'localization_image_path': image_path, 'map_image_path': image_path, 'semantic_trunks': semantic_trunks},
                                               params={'odometry_source': 'synthetic',
-                                                     'odometry_noise_mu_x': 0.001, # TODO: READ FROM CONFIG OR CHANGE!!!!!!!!
-                                                     'odometry_noise_mu_y': 0, # TODO: READ FROM CONFIG OR CHANGE!!!!!!!!
-                                                     'odometry_noise_sigma_x': 0.01, # TODO: READ FROM CONFIG OR CHANGE!!!!!!!!
-                                                     'odometry_noise_sigma_y': 0.01, # TODO: READ FROM CONFIG OR CHANGE!!!!!!!!
+                                                     'odometry_noise_mu_x': experiment_config.odometry_noise_mu_x,
+                                                     'odometry_noise_mu_y': experiment_config.odometry_noise_mu_y,
+                                                     'odometry_noise_sigma_x': experiment_config.odometry_noise_sigma_x,
+                                                     'odometry_noise_sigma_y': experiment_config.odometry_noise_sigma_y,
                                                      'bounding_box_expand_ratio': config.bounding_box_expand_ratio,
                                                      'gaussian_scale_factor': config.cost_map_gaussians_scale_factor,
                                                      'min_angle': config.synthetic_scan_min_angle,
@@ -83,7 +102,7 @@ if __name__ == '__main__':
                                                      'r_secondary_search_step': config.synthetic_scan_r_secondary_search_step,
                                                      'mean_trunk_radius': mean_trunk_radius_in_pixels,
                                                      'std_trunk_radius': std_trunk_radius_in_pixels,
-                                                     'scan_noise_sigma': 0.1, # TODO: READ FROM CONFIG OR CHANGE!!!!!!!!
+                                                     'scan_noise_sigma': experiment_config.scan_noise_sigma,
                                                       },
                                               metadata=trunks_detection_summary['metadata'],
                                               working_dir=execution_dir)
@@ -102,16 +121,5 @@ if __name__ == '__main__':
         trunks_mean_covariance_norms = trunks_covariance_norm_samples_df.mean(axis=1)
         trunks_std_covariance_norms = trunks_covariance_norm_samples_df.std(axis=1)
 
-        plt.figure()
-        plt.errorbar(range(1, result_samples_num + 1), canopies_mean_errors, yerr=canopies_std_errors, color='g')
-        plt.errorbar(range(1, result_samples_num + 1), trunks_mean_errors, yerr=trunks_std_errors, color='r')
-        plt.xlim((0.8, result_samples_num + 0.2))
-        plt.tight_layout()
-        plt.savefig(os.path.join(experiment.experiment_dir, 'error.png'))
-
-        plt.figure()
-        plt.errorbar(range(1, result_samples_num + 1), canopies_mean_covariance_norms, yerr=canopies_std_covariance_norms, color='g')
-        plt.errorbar(range(1, result_samples_num + 1), trunks_mean_covariance_norms, yerr=trunks_std_covariance_norms, color='r')
-        plt.xlim((0.8, result_samples_num + 0.2))
-        plt.tight_layout()
-        plt.savefig(os.path.join(experiment.experiment_dir, 'covariance_norm.png'))
+        plot_canopies_vs_trunks('error', canopies_mean_errors, trunks_mean_errors, canopies_std_errors, trunks_std_errors)
+        plot_canopies_vs_trunks('covariance_norm', canopies_mean_covariance_norms, trunks_mean_covariance_norms, canopies_std_covariance_norms, trunks_std_covariance_norms)
