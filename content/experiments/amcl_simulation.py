@@ -14,12 +14,17 @@ from computer_vision import maps_generation
 
 class AmclSimulationExperiment(Experiment):
 
-    def launch_base_to_scan_static_tf(self, namespace):
+    def _launch_world_to_map_static_tf(self, namespace):
+        ros_utils.launch(package='localization',
+                         launch_file='static_identity_tf.launch',
+                         argv={'ns': namespace, 'frame_id': 'world', 'child_frame_id': 'map', 'apply_ns_on_parent': False})
+
+    def _launch_base_to_scan_static_tf(self, namespace):
         ros_utils.launch(package='localization',
                          launch_file='static_identity_tf.launch',
                          argv={'ns': namespace, 'frame_id': 'base_link', 'child_frame_id': 'contours_scan_link'})
 
-    def launch_synthetic_scan_generator(self, localization_image_path, namespace):
+    def _launch_synthetic_scan_generator(self, localization_image_path, namespace):
         ros_utils.launch(package='localization',
                          launch_file='synthetic_scan_generator.launch',
                          argv={'ns': namespace,
@@ -31,9 +36,10 @@ class AmclSimulationExperiment(Experiment):
                                'max_distance': self.params['max_distance'],
                                'resolution': self.params['resolution'],
                                'r_primary_search_samples': self.params['r_primary_search_samples'],
-                               'r_secondary_search_step': self.params['r_secondary_search_step']})
+                               'r_secondary_search_step': self.params['r_secondary_search_step'],
+                               'scan_noise_sigma': 0.1}) # TODO: change hard coded value!!!!!!!!!!!!!
 
-    def launch_map_server(self, map_yaml_path, namespace):
+    def _launch_map_server(self, map_yaml_path, namespace):
         ros_utils.launch(package='localization',
                          launch_file='map.launch',
                          argv={'ns': namespace, 'map_yaml_path': map_yaml_path})
@@ -41,11 +47,11 @@ class AmclSimulationExperiment(Experiment):
                                           desired_message=r'Read a \d+ X \d+ map @ \d\.?\d+? m/cell',
                                           is_regex=True)
 
-    def launch_amcl(self, namespace):
+    def _launch_amcl(self, namespace):
         ros_utils.launch(package='localization', launch_file='amcl.launch', argv={'ns': namespace})
         ros_utils.wait_for_rosout_message(node_name='%s/amcl' % namespace, desired_message='Done initializing likelihood field model.')
 
-    def launch_synthetic_odometry(self, namespace):
+    def _launch_synthetic_odometry(self, namespace):
         ros_utils.launch(package='localization', launch_file='synthetic_odometry.launch',
                          argv={'ns': namespace,
                                'resolution': self.params['resolution'],
@@ -69,20 +75,27 @@ class AmclSimulationExperiment(Experiment):
         bounding_box_expand_ratio = self.params['bounding_box_expand_ratio']
         origin_localization_image_path = self.data_sources['localization_image_path']
 
-        # Generate map image
+        # Generate canopies and trunk map images
         map_image = cv2.imread(origin_map_image_path)
-        map_image = maps_generation.generate_canopies_map(map_image)
-        upper_left, lower_right = cv_utils.get_bounding_box(map_image, semantic_trunks.values(), expand_ratio=bounding_box_expand_ratio)
-        map_image = map_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
-        map_yaml_path, _ = ros_utils.save_image_to_map(map_image, resolution=self.params['resolution'], map_name='map', dir_name=self.repetition_dir)
+        canopies_map_image = maps_generation.generate_canopies_map(map_image)
+        trunks_map_image = maps_generation.generate_trunks_map(map_image, semantic_trunks.values(), trunk_radius=15, np_random_state=self.np_random_state) # TODO: change 15!!!!
+        upper_left, lower_right = cv_utils.get_bounding_box(canopies_map_image, semantic_trunks.values(), expand_ratio=bounding_box_expand_ratio)
+        canopies_map_image = canopies_map_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
+        trunks_map_image = trunks_map_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
+        canopies_map_yaml_path, _ = ros_utils.save_image_to_map(canopies_map_image, resolution=self.params['resolution'], map_name='canopies_map', dir_name=self.repetition_dir)
+        trunks_map_yaml_path, _ = ros_utils.save_image_to_map(trunks_map_image, resolution=self.params['resolution'], map_name='trunks_map', dir_name=self.repetition_dir)
 
-        # Generate localization image
+        # Generate canopies and trunks localization images
         localization_image = cv2.imread(origin_localization_image_path)
         # TODO: with two images, localization_image will have to be warped to map_image here (and only then cropped, according to the following line)
-        localization_image = maps_generation.generate_canopies_map(localization_image)
-        localization_image = localization_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
-        localization_image_path = os.path.join(self.repetition_dir, 'localization.jpg')
-        cv2.imwrite(localization_image_path, localization_image)
+        canopies_localization_image = maps_generation.generate_canopies_map(localization_image)
+        trunks_localization_image = maps_generation.generate_trunks_map(map_image, semantic_trunks.values(), trunk_radius=15, np_random_state=self.np_random_state) # TODO: change 15!!!!
+        canopies_localization_image = canopies_localization_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
+        trunks_localization_image = trunks_localization_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
+        canopies_localization_image_path = os.path.join(self.repetition_dir, 'canopies_localization.jpg')
+        cv2.imwrite(canopies_localization_image_path, canopies_localization_image)
+        trunks_localization_image_path = os.path.join(self.repetition_dir, 'trunks_localization.jpg')
+        cv2.imwrite(trunks_localization_image_path, trunks_localization_image)
 
         ##### WIP #####
         trunk_radius = 15 # TODO: change!
@@ -115,27 +128,31 @@ class AmclSimulationExperiment(Experiment):
         if launch_rviz:
             ros_utils.launch_rviz(os.path.join(config.root_dir_path, 'src/experiments_framework/framework/amcl.rviz'))
 
-        self.launch_base_to_scan_static_tf(namespace='canopies')
-
-        self.launch_synthetic_scan_generator(localization_image_path, namespace='canopies')
-
-        self.launch_map_server(map_yaml_path, namespace='canopies')
-
-        self.launch_amcl(namespace='canopies')
-
-        self.launch_synthetic_odometry(namespace='canopies')
+        # Launch localization stack for canopies and trunks
+        self._launch_world_to_map_static_tf(namespace='canopies')
+        self._launch_world_to_map_static_tf(namespace='trunks')
+        self._launch_base_to_scan_static_tf(namespace='canopies')
+        self._launch_base_to_scan_static_tf(namespace='trunks')
+        self._launch_synthetic_scan_generator(canopies_localization_image_path, namespace='canopies')
+        self._launch_synthetic_scan_generator(trunks_localization_image_path, namespace='trunks') # TODO: adjust parameters to increase trunks scan FPS (it is currently 15!!!)
+        self._launch_map_server(canopies_map_yaml_path, namespace='canopies')
+        self._launch_map_server(trunks_map_yaml_path, namespace='trunks')
+        self._launch_amcl(namespace='canopies')
+        self._launch_amcl(namespace='trunks')
+        self._launch_synthetic_odometry(namespace='canopies')
+        self._launch_synthetic_odometry(namespace='trunks')
 
         # Start recording output bag
         output_bag_path = os.path.join(self.repetition_dir, '%s_output.bag' % self.name)
         self.results[self.repetition_id]['output_bag_path'] = output_bag_path
-        ros_utils.start_recording_bag(output_bag_path, ['/amcl_pose', '/particlecloud', '/scanmatcher_pose', '/ugv_pose'])
+        # ros_utils.start_recording_bag(output_bag_path, ['/amcl_pose', '/particlecloud', '/scanmatcher_pose', '/ugv_pose']) # TODO: need to change the topics + exceptions are thrown!!!
 
         # Start input bag and wait
         _, bag_duration = ros_utils.play_bag(trajectory_bag_path)
         time.sleep(bag_duration)
 
         # Stop recording output bag
-        ros_utils.stop_recording_bags()
+        # ros_utils.stop_recording_bags() # TODO: resume
 
         # Kill RVIZ
         if launch_rviz:
@@ -144,7 +161,7 @@ class AmclSimulationExperiment(Experiment):
         # Generate results dafaframe
         ground_truth_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/ugv_pose', fields=['x', 'y'])
         ground_truth_df['x'] = ground_truth_df['x'].apply(lambda cell: cell * config.top_view_resolution)
-        ground_truth_df['y'] = ground_truth_df['y'].apply(lambda cell: (localization_image.shape[0] - cell) * config.top_view_resolution)  # TODO: is this the height of the localization image??
+        ground_truth_df['y'] = ground_truth_df['y'].apply(lambda cell: (canopies_localization_image.shape[0] - cell) * config.top_view_resolution)  # TODO: is this the height of the localization image??
         ground_truth_df.columns = ['ground_truth_x[%d]' % self.repetition_id, 'ground_truth_y[%d]' % self.repetition_id]
         amcl_pose_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/amcl_pose', fields=['pose.pose.position.x', 'pose.pose.position.y'])
         amcl_pose_df.columns = ['amcl_pose_x[%d]' % self.repetition_id, 'amcl_pose_y[%d]' % self.repetition_id]
