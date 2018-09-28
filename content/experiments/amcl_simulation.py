@@ -37,7 +37,7 @@ class AmclSimulationExperiment(Experiment):
                                'resolution': self.params['resolution'],
                                'r_primary_search_samples': self.params['r_primary_search_samples'],
                                'r_secondary_search_step': self.params['r_secondary_search_step'],
-                               'scan_noise_sigma': 0.1}) # TODO: change hard coded value!!!!!!!!!!!!!
+                               'scan_noise_sigma': self.params['scan_noise_sigma']}) # TODO: change hard coded value!!!!!!!!!!!!!
 
     def _launch_map_server(self, map_yaml_path, namespace):
         ros_utils.launch(package='localization',
@@ -61,6 +61,27 @@ class AmclSimulationExperiment(Experiment):
                                'noise_sigma_y': self.params['odometry_noise_sigma_y'],
                                })
 
+    def _generate_results_dataframe(self, namespace, output_bag_path, image_height):
+        ground_truth_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/ugv_pose', fields=['x', 'y'])
+        ground_truth_df['x'] = ground_truth_df['x'].apply(lambda cell: cell * config.top_view_resolution)
+        ground_truth_df['y'] = ground_truth_df['y'].apply(lambda cell: (image_height - cell) * config.top_view_resolution)  # TODO: is this the height of the localization image??
+        ground_truth_df.columns = ['ground_truth_x[%d]' % self.repetition_id, 'ground_truth_y[%d]' % self.repetition_id]
+        amcl_pose_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/%s/amcl_pose' % namespace, fields=['pose.pose.position.x', 'pose.pose.position.y'])
+        amcl_pose_df.columns = ['amcl_pose_x[%d]' % (self.repetition_id), 'amcl_pose_y[%d]' % (self.repetition_id)]
+        def covariance_norm(covariance_mat): # TODO: think about this with Amir
+            return np.linalg.norm(np.array(covariance_mat).reshape(6, 6))
+        amcl_covariance_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/%s/amcl_pose' % namespace, fields=['pose.covariance'], aggregation=covariance_norm)
+        amcl_covariance_df.columns = ['amcl_covariance_norm[%d]' % (self.repetition_id)]
+        amcl_results_df = pd.concat([ground_truth_df, amcl_pose_df, amcl_covariance_df], axis=1)
+        amcl_results_df['ground_truth_x[%d]' % self.repetition_id] = amcl_results_df['ground_truth_x[%d]' % self.repetition_id].interpolate()  # TODO: try method='time'
+        amcl_results_df['ground_truth_y[%d]' % self.repetition_id] = amcl_results_df['ground_truth_y[%d]' % self.repetition_id].interpolate()  # TODO: try method='time'
+        error = np.sqrt((amcl_results_df['ground_truth_x[%d]' % self.repetition_id] - amcl_results_df['amcl_pose_x[%d]' % (self.repetition_id)]) ** 2 + \
+                        (amcl_results_df['ground_truth_y[%d]' % self.repetition_id] - amcl_results_df['amcl_pose_y[%d]' % (self.repetition_id)]) ** 2)
+        amcl_results_df['amcl_pose_error[%d]' % (self.repetition_id)] = error
+        amcl_results_path = os.path.join(self.repetition_dir, '%s_amcl_results.csv' % namespace)
+        amcl_results_df.to_csv(amcl_results_path)
+        self.results[self.repetition_id]['%s_amcl_results_path' % namespace] = amcl_results_path
+
     def clean_env(self):
         utils.kill_process('amcl')
         ros_utils.kill_master()
@@ -71,14 +92,17 @@ class AmclSimulationExperiment(Experiment):
 
         origin_map_image_path = self.data_sources['map_image_path']
         semantic_trunks = self.data_sources['semantic_trunks'] # TODO: this will become: map semantic_trunks (localization_semantic_trunks will be added and used for alignment)
+        origin_localization_image_path = self.data_sources['localization_image_path']
         gaussian_scale_factor = self.params['gaussian_scale_factor']
         bounding_box_expand_ratio = self.params['bounding_box_expand_ratio']
-        origin_localization_image_path = self.data_sources['localization_image_path']
+        mean_trunk_radius = self.params['mean_trunk_radius']
+        std_trunk_radius = self.params['std_trunk_radius']
 
         # Generate canopies and trunk map images
         map_image = cv2.imread(origin_map_image_path)
         canopies_map_image = maps_generation.generate_canopies_map(map_image)
-        trunks_map_image = maps_generation.generate_trunks_map(map_image, semantic_trunks.values(), trunk_radius=15, np_random_state=self.np_random_state) # TODO: change 15!!!!
+        trunks_map_image = maps_generation.generate_trunks_map(map_image, semantic_trunks.values(),
+                                                               mean_trunk_radius, std_trunk_radius, np_random_state=self.np_random_state) # TODO: verify that std is not too small!!!
         upper_left, lower_right = cv_utils.get_bounding_box(canopies_map_image, semantic_trunks.values(), expand_ratio=bounding_box_expand_ratio)
         canopies_map_image = canopies_map_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
         trunks_map_image = trunks_map_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
@@ -89,7 +113,8 @@ class AmclSimulationExperiment(Experiment):
         localization_image = cv2.imread(origin_localization_image_path)
         # TODO: with two images, localization_image will have to be warped to map_image here (and only then cropped, according to the following line)
         canopies_localization_image = maps_generation.generate_canopies_map(localization_image)
-        trunks_localization_image = maps_generation.generate_trunks_map(map_image, semantic_trunks.values(), trunk_radius=15, np_random_state=self.np_random_state) # TODO: change 15!!!!
+        trunks_localization_image = maps_generation.generate_trunks_map(map_image, semantic_trunks.values(),
+                                                                        mean_trunk_radius, std_trunk_radius, np_random_state=self.np_random_state)
         canopies_localization_image = canopies_localization_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
         trunks_localization_image = trunks_localization_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
         canopies_localization_image_path = os.path.join(self.repetition_dir, 'canopies_localization.jpg')
@@ -98,21 +123,20 @@ class AmclSimulationExperiment(Experiment):
         cv2.imwrite(trunks_localization_image_path, trunks_localization_image)
 
         ##### WIP #####
-        trunk_radius = 15 # TODO: change!
-        wp1 = tuple(np.array(semantic_trunks['7/A']) + np.array([trunk_radius + 70, 0]))
-        wp2 = tuple(np.array(semantic_trunks['7/G']) + np.array([trunk_radius + 115, 0]))
-        wp3 = tuple(np.array(semantic_trunks['7/A']) + np.array([trunk_radius + 70, 0]))
-        wp4 = tuple(np.array(semantic_trunks['6/A']) + np.array([trunk_radius + 70, 0]))
-        wp5 = tuple(np.array(semantic_trunks['6/G']) + np.array([trunk_radius + 115, 0]))
-        wp6 = tuple(np.array(semantic_trunks['6/A']) + np.array([trunk_radius + 70, 0]))
-        waypoints = [wp1, wp2, wp3, wp4, wp5, wp6] # TODO: rearrange
-        # waypoints = [wp1, wp2] # TODO: rearrange
+        wp1 = tuple(np.array(semantic_trunks['7/A']) + np.array([mean_trunk_radius + 70, 0]))
+        wp2 = tuple(np.array(semantic_trunks['7/G']) + np.array([mean_trunk_radius + 115, 0]))
+        wp3 = tuple(np.array(semantic_trunks['7/A']) + np.array([mean_trunk_radius + 70, 0]))
+        wp4 = tuple(np.array(semantic_trunks['6/A']) + np.array([mean_trunk_radius + 70, 0]))
+        wp5 = tuple(np.array(semantic_trunks['6/G']) + np.array([mean_trunk_radius + 115, 0]))
+        wp6 = tuple(np.array(semantic_trunks['6/A']) + np.array([mean_trunk_radius + 70, 0]))
+        # waypoints = [wp1, wp2, wp3, wp4, wp5, wp6] # TODO: rearrange
+        waypoints = [wp1, wp2] # TODO: rearrange
         optimized_sigma = 90.39 # TODO: rearrange
         freq = 30 # TODO: rearrange and consider what frequency to use!!!
         experiment = PathPlanningExperiment(name='path_planning',
                                             data_sources={'map_image_path': origin_map_image_path, 'trunk_points_list': semantic_trunks.values(),
                                                           'map_upper_left': upper_left, 'map_lower_right': lower_right, 'waypoints': waypoints},
-                                            params={'trunk_radius': trunk_radius, 'gaussian_scale_factor': gaussian_scale_factor,
+                                            params={'trunk_radius': mean_trunk_radius, 'gaussian_scale_factor': gaussian_scale_factor,
                                                     'canopy_sigma': optimized_sigma, 'bounding_box_expand_ratio': bounding_box_expand_ratio},
                                             working_dir=self.repetition_dir, metadata=self.metadata)
         experiment.run(repetitions=1)
@@ -145,36 +169,20 @@ class AmclSimulationExperiment(Experiment):
         # Start recording output bag
         output_bag_path = os.path.join(self.repetition_dir, '%s_output.bag' % self.name)
         self.results[self.repetition_id]['output_bag_path'] = output_bag_path
-        # ros_utils.start_recording_bag(output_bag_path, ['/amcl_pose', '/particlecloud', '/scanmatcher_pose', '/ugv_pose']) # TODO: need to change the topics + exceptions are thrown!!!
+        ros_utils.start_recording_bag(output_bag_path, ['/ugv_pose', '/canopies/amcl_pose', '/canopies/particlecloud',
+                                                        '/trunks/amcl_pose', '/trunks/particlecloud']) # TODO: exceptions are thrown!!!
 
         # Start input bag and wait
         _, bag_duration = ros_utils.play_bag(trajectory_bag_path)
         time.sleep(bag_duration)
 
         # Stop recording output bag
-        # ros_utils.stop_recording_bags() # TODO: resume
+        ros_utils.stop_recording_bags()
 
         # Kill RVIZ
         if launch_rviz:
             ros_utils.kill_rviz()
 
         # Generate results dafaframe
-        ground_truth_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/ugv_pose', fields=['x', 'y'])
-        ground_truth_df['x'] = ground_truth_df['x'].apply(lambda cell: cell * config.top_view_resolution)
-        ground_truth_df['y'] = ground_truth_df['y'].apply(lambda cell: (canopies_localization_image.shape[0] - cell) * config.top_view_resolution)  # TODO: is this the height of the localization image??
-        ground_truth_df.columns = ['ground_truth_x[%d]' % self.repetition_id, 'ground_truth_y[%d]' % self.repetition_id]
-        amcl_pose_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/amcl_pose', fields=['pose.pose.position.x', 'pose.pose.position.y'])
-        amcl_pose_df.columns = ['amcl_pose_x[%d]' % self.repetition_id, 'amcl_pose_y[%d]' % self.repetition_id]
-        def covariance_norm(covariance_mat): # TODO: think about this with Amir
-            return np.linalg.norm(np.array(covariance_mat).reshape(6, 6))
-        amcl_covariance_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/amcl_pose', fields=['pose.covariance'], aggregation=covariance_norm)
-        amcl_covariance_df.columns = ['amcl_covariance_norm[%d]' % self.repetition_id]
-        amcl_results_df = pd.concat([ground_truth_df, amcl_pose_df, amcl_covariance_df], axis=1)
-        amcl_results_df['ground_truth_x[%d]' % self.repetition_id] = amcl_results_df['ground_truth_x[%d]' % self.repetition_id].interpolate()  # TODO: try method='time'
-        amcl_results_df['ground_truth_y[%d]' % self.repetition_id] = amcl_results_df['ground_truth_y[%d]' % self.repetition_id].interpolate()  # TODO: try method='time'
-        error = np.sqrt((amcl_results_df['ground_truth_x[%d]' % self.repetition_id] - amcl_results_df['amcl_pose_x[%d]' % self.repetition_id]) ** 2 + \
-                        (amcl_results_df['ground_truth_y[%d]' % self.repetition_id] - amcl_results_df['amcl_pose_y[%d]' % self.repetition_id]) ** 2)
-        amcl_results_df['amcl_pose_error[%d]' % self.repetition_id] = error
-        amcl_results_path = os.path.join(self.repetition_dir, 'amcl_results.csv')
-        amcl_results_df.to_csv(amcl_results_path)
-        self.results[self.repetition_id]['amcl_results_path'] = amcl_results_path
+        self._generate_results_dataframe(namespace='canopies', output_bag_path=output_bag_path, image_height=canopies_localization_image.shape[0])
+        self._generate_results_dataframe(namespace='trunks', output_bag_path=output_bag_path, image_height=trunks_localization_image.shape[0])
