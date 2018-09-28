@@ -21,6 +21,7 @@ class Experiment(object):
         self.metadata = metadata
         self.results = OrderedDict()
         self.valid_repetitions = []
+        self.np_random_state = np.random.get_state()
         _logger.info('New experiment: %s' % self.name)
 
     def clean_env(self):
@@ -69,12 +70,13 @@ class Experiment(object):
                        'params': params_to_dump,
                        'metadata': metadata_to_dump,
                        'results': results_to_dump,
-                       'experiment_dir': self.experiment_dir}
+                       'experiment_dir': self.experiment_dir,
+                       'valid_repetitions': self.valid_repetitions}
             self.summary = summary
             with open(os.path.join(self.experiment_dir, 'experiment_summary.json'), 'w') as f:
                 json.dump(summary, f, indent=4)
             with open(os.path.join(self.experiment_dir, 'numpy_random_state.pkl'), 'wb') as f:
-                pickle.dump(np.random.get_state(), f)
+                pickle.dump(self.np_random_state, f)
         except ExperimentFailure:
             _logger.info('Experiment failed, continuing execution')
         finally:
