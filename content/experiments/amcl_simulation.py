@@ -66,6 +66,18 @@ class AmclSimulationExperiment(Experiment):
                                'noise_sigma_y': self.params['odometry_noise_sigma_y'],
                                })
 
+    def _launch_contours_visualization(self):
+        ros_utils.launch(package='localization',
+                         launch_file='contours_scan_visualizer.launch',
+                         argv={'min_angle': self.params['min_angle'],
+                               'max_angle': self.params['max_angle'],
+                               'resolution': self.params['resolution'],
+                               'window_size': int(self.params['max_distance'] * 1.2),
+                               'canopies_image_path': self.viz_image_path,
+                               'trunks_image_path': self.trunks_localization_image_path,
+                               'canopies_scans_pickle_path': self.canopies_scans_pickle_path,
+                               'trunks_scans_pickle_path': self.trunks_scans_pickle_path})
+
     def _generate_results_dataframe(self, namespace, output_bag_path, image_height):
         ground_truth_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/ugv_pose', fields=['point.x', 'point.y'])
         ground_truth_df['point.x'] = ground_truth_df['point.x'].apply(lambda cell: cell * self.params['resolution'])
@@ -139,6 +151,9 @@ class AmclSimulationExperiment(Experiment):
         cv2.imwrite(self.trunks_localization_image_path, trunks_localization_image)
         self.canopies_localization_image_height = canopies_localization_image.shape[0]
         self.trunks_localization_image_height = trunks_localization_image.shape[0]
+        viz_image = cv2.imread(image_for_trajectory_path)[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
+        self.viz_image_path = os.path.join(self.experiment_dir, 'image_for_visualization.jpg')
+        cv2.imwrite(self.viz_image_path, viz_image)
 
         # Get trajectory
         waypoints_coordinates = []
@@ -179,7 +194,6 @@ class AmclSimulationExperiment(Experiment):
                                                                self.params['r_primary_search_samples'], self.params['r_secondary_search_step'],
                                                                output_pickle_path=self.trunks_scans_pickle_path)
 
-
     def task(self, **kwargs):
 
         launch_rviz = kwargs.get('launch_rviz', False)
@@ -204,6 +218,9 @@ class AmclSimulationExperiment(Experiment):
         self._initialize_global_localization(namespace='trunks')
         self._launch_synthetic_odometry(namespace='canopies')
         self._launch_synthetic_odometry(namespace='trunks')
+
+        if launch_rviz:
+            self._launch_contours_visualization()
 
         # Start recording output bag
         output_bag_path = os.path.join(self.repetition_dir, '%s_output.bag' % self.name)
