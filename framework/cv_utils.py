@@ -141,7 +141,7 @@ def get_coordinates_list_from_scan_ranges(scan_ranges, center_x, center_y, min_a
     samples_num = len(scan_ranges)
     coordinates_list = []
     for scan_idx, theta in enumerate(np.linspace(min_angle, max_angle, num=samples_num)):
-        if np.isnan(scan_ranges[scan_idx]):
+        if np.isnan(scan_ranges[scan_idx]) or np.isinf(scan_ranges[scan_idx]):
             continue
         x = int(np.round(center_x + scan_ranges[scan_idx] / resolution * np.cos(-theta)))
         y = int(np.round(center_y + scan_ranges[scan_idx] / resolution * np.sin(-theta)))
@@ -150,18 +150,21 @@ def get_coordinates_list_from_scan_ranges(scan_ranges, center_x, center_y, min_a
 
 
 def warp_image(image, points_in_image, points_in_baseline, method='affine'):
+    # TODO: add RANSAC!!!!!!
     if method == 'homographic':
         h, _ = cv2.findHomography(np.float32(points_in_image), np.float32(points_in_baseline))
         warpped_image = cv2.warpPerspective(image, h, (image.shape[1], image.shape[0]))
+        return warpped_image, h
     elif method == 'affine':
         M, _ = cv2.estimateAffine2D(np.float32(points_in_image), np.float32(points_in_baseline))
         warpped_image = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
+        return warpped_image, M
     elif method == 'rigid':
         M = cv2.estimateRigidTransform(np.float32(points_in_image), np.float32(points_in_baseline), fullAffine=False)
         warpped_image = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
+        return warpped_image, M
     else:
         raise Exception('Unsupported method')
-    return warpped_image
 
 
 def calculate_image_diff(image1, image2, method='mse', x_crop_ratio=0.3, y_crop_ratio=0.3):
