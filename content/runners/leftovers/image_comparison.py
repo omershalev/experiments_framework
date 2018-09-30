@@ -23,20 +23,23 @@ if __name__ == '__main__':
     _, afternoon_canopy_contours = canopy_contours.extract_canopy_contours(img_afternoon)
     _, late_afternoon_canopy_contours = canopy_contours.extract_canopy_contours(img_late_afternoon)
 
-    i1, h1 = image_alignment.register(late_noon_canopy_contours, noon_canopy_contours, show_matches=True)
-    i2, h2 = image_alignment.register(afternoon_canopy_contours, noon_canopy_contours, show_matches=True)
-    i3, h3 = image_alignment.register(late_afternoon_canopy_contours, noon_canopy_contours, show_matches=True)
+    i1, h1 = image_alignment.typical_registration(late_noon_canopy_contours, noon_canopy_contours, show_matches=True)
+    i2, h2 = image_alignment.typical_registration(afternoon_canopy_contours, noon_canopy_contours, show_matches=True)
+    i3, h3 = image_alignment.typical_registration(late_afternoon_canopy_contours, noon_canopy_contours, show_matches=True)
 
-    height, width, channels = img_noon.shape
+    height, width = img_noon.shape[0], img_noon.shape[1]
     img_late_noon_registered = cv2.warpPerspective(img_late_noon, h1, (width, height))
     img_afternoon_registered = cv2.warpPerspective(img_afternoon, h2, (width, height))
     img_late_afternoon_registered = cv2.warpPerspective(img_late_afternoon, h3, (width, height))
+    # img_late_noon_registered = cv2.warpAffine(img_late_noon, h1, (width, height))
+    # img_afternoon_registered = cv2.warpAffine(img_afternoon, h2, (width, height))
+    # img_late_afternoon_registered = cv2.warpAffine(img_late_afternoon, h3, (width, height))
 
 
-    # viz_utils.show_image('noon', img_noon)
-    # viz_utils.show_image('late noon', img_late_noon_registered)
-    # viz_utils.show_image('afternoon', img_afternoon_registered)
-    # viz_utils.show_image('late afternoon', img_late_afternoon_registered)
-    viz_utils.show_image('late noon', i1)
-    viz_utils.show_image('afternoon', i2)
-    viz_utils.show_image('late afternoon', i3)
+    viz_utils.show_image('noon', img_noon)
+    viz_utils.show_image('late noon', img_late_noon_registered)
+    viz_utils.show_image('afternoon', img_afternoon_registered)
+    viz_utils.show_image('late afternoon', img_late_afternoon_registered)
+    # viz_utils.show_image('late noon', i1)
+    # viz_utils.show_image('afternoon', i2)
+    # viz_utils.show_image('late afternoon', i3)

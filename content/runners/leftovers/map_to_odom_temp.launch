@@ -1,0 +1,4 @@
+<launch>
+    <arg name="ns" default="" />
+    <node pkg="localization" type="map_to_odom.py" name="map_to_odom_gt" output="screen" />
+</launch>

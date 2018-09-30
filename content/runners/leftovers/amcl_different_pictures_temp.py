@@ -7,7 +7,7 @@ from experiments_framework.framework import config
 if __name__ == '__main__':
 
     ros_utils.start_master()
-    ros_utils.launch_rviz(os.path.join(config.root_dir_path, 'src/experiments_framework/framework/amcl.rviz'))
+    ros_utils.launch_rviz(os.path.join(config.root_dir_path, 'astar/experiments_framework/framework/amcl.rviz'))
 
     # Launch base_link to contours_scan_link static TF
     ros_utils.launch(package='localization',
