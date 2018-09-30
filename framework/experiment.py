@@ -1,5 +1,6 @@
 import os
 import datetime
+import time
 import pickle
 import json
 from collections import OrderedDict
@@ -27,6 +28,9 @@ class Experiment(object):
     def clean_env(self):
         raise NotImplementedError
 
+    def prologue(self):
+        pass
+
     def task(self, **kwargs):
         raise NotImplementedError
 
@@ -38,6 +42,7 @@ class Experiment(object):
             experiment_dir_name = '%s_%s' % (datetime.datetime.now().strftime('%Y%m%d-%H%M%S'), self.name)
             self.experiment_dir = os.path.join(self.working_dir, experiment_dir_name)
             os.mkdir(self.experiment_dir)
+            self.prologue()
             self.repetition_id = 1
             while self.repetition_id <= repetitions:
                 self.results[self.repetition_id] = {}
@@ -81,3 +86,5 @@ class Experiment(object):
             _logger.info('Experiment failed, continuing execution')
         finally:
             self.clean_env()
+            time.sleep(3)
+        _logger.info('End of experiment: %s' % self.name)
