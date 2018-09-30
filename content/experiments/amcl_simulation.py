@@ -1,4 +1,5 @@
 import time
+import pickle
 import os
 import cv2
 import numpy as np
@@ -35,7 +36,7 @@ class AmclSimulationExperiment(Experiment):
                                'samples_num': self.params['samples_num'],
                                'min_distance': self.params['min_distance'],
                                'max_distance': self.params['max_distance'],
-                               'resolution': self.params['resolution'],
+                               'resolution': self.params['localization_resolution'],
                                'r_primary_search_samples': self.params['r_primary_search_samples'],
                                'r_secondary_search_step': self.params['r_secondary_search_step'],
                                'scan_noise_sigma': self.params['scan_noise_sigma'],
@@ -59,7 +60,7 @@ class AmclSimulationExperiment(Experiment):
     def _launch_synthetic_odometry(self, namespace):
         ros_utils.launch(package='localization', launch_file='synthetic_odometry.launch',
                          argv={'ns': namespace,
-                               'resolution': self.params['resolution'],
+                               'resolution': self.params['localization_resolution'],
                                'noise_mu_x': self.params['odometry_noise_mu_x'],
                                'noise_mu_y': self.params['odometry_noise_mu_y'],
                                'noise_sigma_x': self.params['odometry_noise_sigma_x'],
@@ -71,8 +72,8 @@ class AmclSimulationExperiment(Experiment):
                          launch_file='contours_scan_visualizer.launch',
                          argv={'min_angle': self.params['min_angle'],
                                'max_angle': self.params['max_angle'],
-                               'resolution': self.params['resolution'],
-                               'window_size': int(self.params['max_distance'] * 1.2),
+                               'resolution': self.params['localization_resolution'],
+                               'window_size': int(self.params['max_distance'] * 1.3),
                                'canopies_image_path': self.viz_image_path,
                                'trunks_image_path': self.trunks_localization_image_path,
                                'canopies_scans_pickle_path': self.canopies_scans_pickle_path,
@@ -80,8 +81,8 @@ class AmclSimulationExperiment(Experiment):
 
     def _generate_results_dataframe(self, namespace, output_bag_path, image_height):
         ground_truth_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/ugv_pose', fields=['point.x', 'point.y'])
-        ground_truth_df['point.x'] = ground_truth_df['point.x'].apply(lambda cell: cell * self.params['resolution'])
-        ground_truth_df['point.y'] = ground_truth_df['point.y'].apply(lambda cell: (image_height - cell) * self.params['resolution'])  # TODO: is this the height of the localization image??
+        ground_truth_df['point.x'] = ground_truth_df['point.x'].apply(lambda cell: cell * self.params['localization_resolution'])
+        ground_truth_df['point.y'] = ground_truth_df['point.y'].apply(lambda cell: (image_height - cell) * self.params['localization_resolution'])  # TODO: is this the height of the localization image??
         ground_truth_df.columns = ['ground_truth_x[%d]' % self.repetition_id, 'ground_truth_y[%d]' % self.repetition_id]
         amcl_pose_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/%s/amcl_pose' % namespace, fields=['pose.pose.position.x', 'pose.pose.position.y'])
         amcl_pose_df.columns = ['amcl_pose_x[%d]' % (self.repetition_id), 'amcl_pose_y[%d]' % (self.repetition_id)]
@@ -109,22 +110,25 @@ class AmclSimulationExperiment(Experiment):
         localization_semantic_trunks = self.data_sources['localization_semantic_trunks']
         origin_localization_image_path = self.data_sources['localization_image_path']
         trajectory_waypoints = self.data_sources['trajectory_waypoints']
-        gaussian_scale_factor = self.params['gaussian_scale_factor']
+        cost_map_gaussian_scale_factor = self.params['cost_map_gaussian_scale_factor']
         bounding_box_expand_ratio = self.params['bounding_box_expand_ratio']
-        mean_trunk_radius = self.params['mean_trunk_radius']
-        std_trunk_radius = self.params['std_trunk_radius']
+        mean_trunk_radius_for_map = self.params['mean_trunk_radius_for_map']
+        mean_trunk_radius_for_localization = self.params['mean_trunk_radius_for_localization']
+        std_trunk_radius_for_map = self.params['std_trunk_radius_for_map']
+        std_trunk_radius_for_localization = self.params['std_trunk_radius_for_localization']
 
         # Generate canopies and trunk map images
         map_image = cv2.imread(origin_map_image_path)
         cv2.imwrite(os.path.join(self.experiment_dir, 'image_for_map.jpg'), map_image)
         canopies_map_image = maps_generation.generate_canopies_map(map_image)
         trunks_map_image = maps_generation.generate_trunks_map(map_image, map_semantic_trunks.values(),
-                                                               mean_trunk_radius, std_trunk_radius, np_random_state=self.np_random_state) # TODO: verify that std is not too small!!!
+                                                               mean_trunk_radius_for_map, std_trunk_radius_for_map,
+                                                               np_random_state=self.np_random_state) # TODO: verify that std is not too small!!!
         upper_left, lower_right = cv_utils.get_bounding_box(canopies_map_image, map_semantic_trunks.values(), expand_ratio=bounding_box_expand_ratio)
         canopies_map_image = canopies_map_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
         trunks_map_image = trunks_map_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
-        self.canopies_map_yaml_path, _ = ros_utils.save_image_to_map(canopies_map_image, resolution=self.params['resolution'], map_name='canopies_map', dir_name=self.experiment_dir)
-        self.trunks_map_yaml_path, _ = ros_utils.save_image_to_map(trunks_map_image, resolution=self.params['resolution'], map_name='trunks_map', dir_name=self.experiment_dir)
+        self.canopies_map_yaml_path, _ = ros_utils.save_image_to_map(canopies_map_image, resolution=self.params['map_resolution'], map_name='canopies_map', dir_name=self.experiment_dir)
+        self.trunks_map_yaml_path, _ = ros_utils.save_image_to_map(trunks_map_image, resolution=self.params['map_resolution'], map_name='trunks_map', dir_name=self.experiment_dir)
 
         # Generate canopies and trunks localization images
         localization_image = cv2.imread(origin_localization_image_path)
@@ -142,7 +146,8 @@ class AmclSimulationExperiment(Experiment):
             image_for_trajectory_path = origin_localization_image_path
         canopies_localization_image = maps_generation.generate_canopies_map(localization_image)
         trunks_localization_image = maps_generation.generate_trunks_map(localization_image, localization_semantic_trunks.values(),
-                                                                        mean_trunk_radius, std_trunk_radius, np_random_state=self.np_random_state)
+                                                                        mean_trunk_radius_for_localization, std_trunk_radius_for_localization,
+                                                                        np_random_state=self.np_random_state)
         canopies_localization_image = canopies_localization_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
         trunks_localization_image = trunks_localization_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
         self.canopies_localization_image_path = os.path.join(self.experiment_dir, 'canopies_localization.jpg')
@@ -162,14 +167,15 @@ class AmclSimulationExperiment(Experiment):
                 point1 = localization_semantic_trunks[waypoint[0]]
                 point2 = localization_semantic_trunks[waypoint[1]]
                 waypoints_coordinates.append(((point1[0] + point2[0]) / 2, (point1[1] + point2[1]) / 2))
-        optimized_sigma = 90.39 # TODO: rearrange!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        canopy_sigma = self.params['cost_map_canopy_sigma']
         path_planning_experiment = PathPlanningExperiment(name='path_planning',
                                                           data_sources={'map_image_path': image_for_trajectory_path,
                                                                         'trunk_points_list': localization_semantic_trunks.values(),
                                                                         'map_upper_left': upper_left, 'map_lower_right': lower_right,
                                                                         'waypoints': waypoints_coordinates},
-                                                          params={'trunk_radius': mean_trunk_radius, 'gaussian_scale_factor': gaussian_scale_factor,
-                                                                  'canopy_sigma': optimized_sigma, 'bounding_box_expand_ratio': bounding_box_expand_ratio},
+                                                          params={'trunk_radius': mean_trunk_radius_for_localization,
+                                                                  'gaussian_scale_factor': cost_map_gaussian_scale_factor,
+                                                                  'canopy_sigma': canopy_sigma, 'bounding_box_expand_ratio': bounding_box_expand_ratio},
                                                           working_dir=self.experiment_dir, metadata=self.metadata)
         path_planning_experiment.run(repetitions=1)
         self.results['trajectory'] = path_planning_experiment.results[1]['trajectory']
@@ -181,18 +187,30 @@ class AmclSimulationExperiment(Experiment):
         ros_utils.trajectory_to_bag(pose_time_tuples_list, self.trajectory_bag_path)
 
         # Generate scan offline
-        self.canopies_scans_pickle_path = os.path.join(self.experiment_dir, 'canopies_pose_scan_tuples.pkl') # TODO: resume this!!!!
+        self.canopies_scans_pickle_path = os.path.join(self.experiment_dir, 'canopies_pose_scan_tuples.pkl')
         offline_synthetic_scan_generator.generate_scans_pickle(self.trajectory_bag_path, canopies_localization_image, self.params['min_angle'],
                                                                self.params['max_angle'], self.params['samples_num'], self.params['min_distance'],
-                                                               self.params['max_distance'], self.params['resolution'],
+                                                               self.params['max_distance'], self.params['localization_resolution'],
                                                                self.params['r_primary_search_samples'], self.params['r_secondary_search_step'],
                                                                output_pickle_path=self.canopies_scans_pickle_path)
         self.trunks_scans_pickle_path = os.path.join(self.experiment_dir, 'trunks_pose_scan_tuples.pkl')
         offline_synthetic_scan_generator.generate_scans_pickle(self.trajectory_bag_path, trunks_localization_image, self.params['min_angle'],
                                                                self.params['max_angle'], self.params['samples_num'], self.params['min_distance'],
-                                                               self.params['max_distance'], self.params['resolution'],
+                                                               self.params['max_distance'], self.params['localization_resolution'],
                                                                self.params['r_primary_search_samples'], self.params['r_secondary_search_step'],
                                                                output_pickle_path=self.trunks_scans_pickle_path)
+
+        # Calculate valid scans rate
+        with open(self.canopies_scans_pickle_path) as f:
+            canopies_scans = pickle.load(f)
+        with open(self.trunks_scans_pickle_path) as f:
+            trunks_scans = pickle.load(f)
+        canopies_invalid_scans = np.sum([np.all(np.isnan(scan)) for scan in canopies_scans.values()])
+        canopies_total_timestamps = len(canopies_scans.values())
+        self.results['canopies_valid_scans_rate'] = float(canopies_total_timestamps - canopies_invalid_scans) / canopies_total_timestamps
+        trunks_invalid_scans = np.sum([np.all(np.isnan(scan)) for scan in trunks_scans.values()])
+        trunks_total_timestamps = len(trunks_scans.values())
+        self.results['trunks_valid_scans_rate'] = float(trunks_total_timestamps - trunks_invalid_scans) / trunks_total_timestamps
 
     def task(self, **kwargs):
 
