@@ -11,6 +11,7 @@ from framework import utils
 from framework import config
 from content.experiments.path_planning import PathPlanningExperiment
 from computer_vision import maps_generation
+from computer_vision import offline_synthetic_scan_generator
 
 class AmclSimulationExperiment(Experiment):
 
@@ -24,35 +25,21 @@ class AmclSimulationExperiment(Experiment):
                          launch_file='static_identity_tf.launch',
                          argv={'ns': namespace, 'frame_id': 'base_link', 'child_frame_id': 'contours_scan_link'})
 
-    def _launch_synthetic_scan_generator(self, localization_image_path, namespace):
-        if namespace == 'canopies': # TODO: change this!!!!!!!!!!!!!!!!!!!!!!!!!!
-            ros_utils.launch(package='localization',
-                             launch_file='synthetic_scan_generator.launch',
-                             argv={'ns': namespace,
-                                   'localization_image_path': localization_image_path,
-                                   'min_angle': self.params['min_angle'],
-                                   'max_angle': self.params['max_angle'],
-                                   'samples_num': self.params['samples_num'],
-                                   'min_distance': self.params['min_distance'],
-                                   'max_distance': self.params['max_distance'],
-                                   'resolution': self.params['resolution'],
-                                   'r_primary_search_samples': self.params['r_primary_search_samples'],
-                                   'r_secondary_search_step': self.params['r_secondary_search_step'],
-                                   'scan_noise_sigma': self.params['scan_noise_sigma']})
-        else: # TODO: change this!!!!!!!!!!!!!!!!!!!!!!!!!!
-            ros_utils.launch(package='localization',
-                             launch_file='synthetic_scan_generator.launch',
-                             argv={'ns': namespace,
-                                   'localization_image_path': localization_image_path,
-                                   'min_angle': self.params['min_angle'],
-                                   'max_angle': self.params['max_angle'],
-                                   'samples_num': self.params['samples_num'],
-                                   'min_distance': self.params['min_distance'],
-                                   'max_distance': 70,
-                                   'resolution': self.params['resolution'],
-                                   'r_primary_search_samples': 20,
-                                   'r_secondary_search_step': 3,
-                                   'scan_noise_sigma': self.params['scan_noise_sigma']})
+    def _launch_synthetic_scan_generator(self, localization_image_path, namespace, pickle_path=None):
+        ros_utils.launch(package='localization',
+                         launch_file='synthetic_scan_generator.launch',
+                         argv={'ns': namespace,
+                               'localization_image_path': localization_image_path,
+                               'min_angle': self.params['min_angle'],
+                               'max_angle': self.params['max_angle'],
+                               'samples_num': self.params['samples_num'],
+                               'min_distance': self.params['min_distance'],
+                               'max_distance': self.params['max_distance'],
+                               'resolution': self.params['resolution'],
+                               'r_primary_search_samples': self.params['r_primary_search_samples'],
+                               'r_secondary_search_step': self.params['r_secondary_search_step'],
+                               'scan_noise_sigma': self.params['scan_noise_sigma'],
+                               'scans_pickle_path': pickle_path})
 
     def _launch_map_server(self, map_yaml_path, namespace):
         ros_utils.launch(package='localization',
@@ -77,9 +64,9 @@ class AmclSimulationExperiment(Experiment):
                                })
 
     def _generate_results_dataframe(self, namespace, output_bag_path, image_height):
-        ground_truth_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/ugv_pose', fields=['x', 'y'])
-        ground_truth_df['x'] = ground_truth_df['x'].apply(lambda cell: cell * config.top_view_resolution)
-        ground_truth_df['y'] = ground_truth_df['y'].apply(lambda cell: (image_height - cell) * config.top_view_resolution)  # TODO: is this the height of the localization image??
+        ground_truth_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/ugv_pose', fields=['point.x', 'point.y'])
+        ground_truth_df['x'] = ground_truth_df['x'].apply(lambda cell: cell * self.params['resolution'])
+        ground_truth_df['y'] = ground_truth_df['y'].apply(lambda cell: (image_height - cell) * self.params['resolution'])  # TODO: is this the height of the localization image??
         ground_truth_df.columns = ['ground_truth_x[%d]' % self.repetition_id, 'ground_truth_y[%d]' % self.repetition_id]
         amcl_pose_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/%s/amcl_pose' % namespace, fields=['pose.pose.position.x', 'pose.pose.position.y'])
         amcl_pose_df.columns = ['amcl_pose_x[%d]' % (self.repetition_id), 'amcl_pose_y[%d]' % (self.repetition_id)]
@@ -133,7 +120,7 @@ class AmclSimulationExperiment(Experiment):
             localization_image, affine_transform = cv_utils.warp_image(localization_image, localization_semantic_trunks.values(),
                                                                        map_semantic_trunks.values(), method='affine')
             localization_semantic_trunks_np = np.float32(localization_semantic_trunks.values()).reshape(-1, 1, 2)
-            affine_transform = np.insert(affine_transform, [2], [0, 0, 1], axis=0) # TODO: very unclear if this is correct!!!!!!!
+            affine_transform = np.insert(affine_transform, [2], [0, 0, 1], axis=0) # TODO: double check if this is correct
             localization_semantic_trunks_np = cv2.perspectiveTransform(localization_semantic_trunks_np, affine_transform)
             localization_semantic_trunks = {key: (int(np.round(value[0])), int(np.round(value[1]))) for key, value
                                             in zip(map_semantic_trunks.keys(), localization_semantic_trunks_np[:, 0, :].tolist())}
@@ -142,7 +129,7 @@ class AmclSimulationExperiment(Experiment):
         else:
             image_for_trajectory_path = origin_localization_image_path
         canopies_localization_image = maps_generation.generate_canopies_map(localization_image)
-        trunks_localization_image = maps_generation.generate_trunks_map(map_image, localization_semantic_trunks.values(),
+        trunks_localization_image = maps_generation.generate_trunks_map(localization_image, localization_semantic_trunks.values(),
                                                                         mean_trunk_radius, std_trunk_radius, np_random_state=self.np_random_state)
         canopies_localization_image = canopies_localization_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
         trunks_localization_image = trunks_localization_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
@@ -151,28 +138,50 @@ class AmclSimulationExperiment(Experiment):
         trunks_localization_image_path = os.path.join(self.repetition_dir, 'trunks_localization.jpg')
         cv2.imwrite(trunks_localization_image_path, trunks_localization_image)
 
-        ##### WIP #####
-        waypoints_coordinates = []
-        for waypoint in trajectory_waypoints:
-            if type(waypoint) is tuple:
-                point1 = localization_semantic_trunks[waypoint[0]]
-                point2 = localization_semantic_trunks[waypoint[1]]
-                waypoints_coordinates.append(((point1[0] + point2[0]) / 2, (point1[1] + point2[1]) / 2))
-        optimized_sigma = 90.39 # TODO: rearrange
-        freq = 30 # TODO: rearrange and consider what frequency to use!!!
-        experiment = PathPlanningExperiment(name='path_planning',
-                                            data_sources={'map_image_path': image_for_trajectory_path, 'trunk_points_list': localization_semantic_trunks.values(),
-                                                          'map_upper_left': upper_left, 'map_lower_right': lower_right, 'waypoints': waypoints_coordinates},
-                                            params={'trunk_radius': mean_trunk_radius, 'gaussian_scale_factor': gaussian_scale_factor,
-                                                    'canopy_sigma': optimized_sigma, 'bounding_box_expand_ratio': bounding_box_expand_ratio},
-                                            working_dir=self.repetition_dir, metadata=self.metadata)
-        experiment.run(repetitions=1)
-        trajectory = experiment.results[1]['trajectory']
+        # Get trajectory
+        if self.repetition_id == 1:
+            waypoints_coordinates = []
+            for waypoint in trajectory_waypoints:
+                if type(waypoint) is tuple:
+                    point1 = localization_semantic_trunks[waypoint[0]]
+                    point2 = localization_semantic_trunks[waypoint[1]]
+                    waypoints_coordinates.append(((point1[0] + point2[0]) / 2, (point1[1] + point2[1]) / 2))
+            optimized_sigma = 90.39 # TODO: rearrange!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            path_planning_experiment = PathPlanningExperiment(name='path_planning',
+                                                              data_sources={'map_image_path': image_for_trajectory_path,
+                                                                            'trunk_points_list': localization_semantic_trunks.values(),
+                                                                            'map_upper_left': upper_left, 'map_lower_right': lower_right,
+                                                                            'waypoints': waypoints_coordinates},
+                                                              params={'trunk_radius': mean_trunk_radius, 'gaussian_scale_factor': gaussian_scale_factor,
+                                                                      'canopy_sigma': optimized_sigma, 'bounding_box_expand_ratio': bounding_box_expand_ratio},
+                                                              working_dir=self.experiment_dir, metadata=self.metadata)
+            path_planning_experiment.run(repetitions=1)
+            trajectory = path_planning_experiment.results[1]['trajectory']
+            self.results['trajectory'] = trajectory
+        trajectory = self.results['trajectory']
+        freq = self.params['target_frequency']
         timestamps = np.linspace(start=0, stop=(1.0 / freq) * len(trajectory), num=len(trajectory))
         pose_time_tuples_list = [(x, y, t) for (x, y), t in zip(trajectory, timestamps)]
         trajectory_bag_path = os.path.join(self.repetition_dir, 'trajectory.bag')
         ros_utils.trajectory_to_bag(pose_time_tuples_list, trajectory_bag_path)
-        ##### E/O WIP #####
+
+        # Generate scan offline
+        if self.repetition_id == 1:
+            # self.canopies_pose_scan_pickle_path = os.path.join(self.experiment_dir, 'canopies_pose_scan_tuples.pkl') # TODO: resume this!!!!
+            # offline_synthetic_scan_generator.generate_scans_pickle(trajectory_bag_path, canopies_localization_image, self.params['min_angle'],
+            #                                                        self.params['max_angle'], self.params['samples_num'], self.params['min_distance'],
+            #                                                        self.params['max_distance'], self.params['resolution'],
+            #                                                        self.params['r_primary_search_samples'], self.params['r_secondary_search_step'],
+            #                                                        output_pickle_path=self.canopies_pose_scan_pickle_path)
+            # self.trunks_pose_scan_pickle_path = os.path.join(self.experiment_dir, 'trunks_pose_scan_tuples.pkl')
+            # offline_synthetic_scan_generator.generate_scans_pickle(trajectory_bag_path, trunks_localization_image, self.params['min_angle'],
+            #                                                        self.params['max_angle'], self.params['samples_num'], self.params['min_distance'],
+            #                                                        self.params['max_distance'], self.params['resolution'],
+            #                                                        self.params['r_primary_search_samples'], self.params['r_secondary_search_step'],
+            #                                                        output_pickle_path=self.trunks_pose_scan_pickle_path)
+            self.canopies_pose_scan_pickle_path = os.path.join(r'/home/omer/temp/20180930-115813_amcl_simulation/20180930-115813_amcl_simulation_on_15-08-2', 'canopies_pose_scan_tuples.pkl')
+            self.trunks_pose_scan_pickle_path = os.path.join(r'/home/omer/temp/20180930-115813_amcl_simulation/20180930-115813_amcl_simulation_on_15-08-2', 'trunks_pose_scan_tuples.pkl')
+
 
         # Start ROS and RVIZ
         ros_utils.start_master()
@@ -184,8 +193,8 @@ class AmclSimulationExperiment(Experiment):
         self._launch_world_to_map_static_tf(namespace='trunks')
         self._launch_base_to_scan_static_tf(namespace='canopies')
         self._launch_base_to_scan_static_tf(namespace='trunks')
-        self._launch_synthetic_scan_generator(canopies_localization_image_path, namespace='canopies')
-        self._launch_synthetic_scan_generator(trunks_localization_image_path, namespace='trunks') # TODO: adjust parameters to increase trunks scan FPS (it is currently 15!!!)
+        self._launch_synthetic_scan_generator(canopies_localization_image_path, namespace='canopies', pickle_path=self.canopies_pose_scan_pickle_path)
+        self._launch_synthetic_scan_generator(trunks_localization_image_path, namespace='trunks', pickle_path=self.trunks_pose_scan_pickle_path) # TODO: adjust parameters to increase trunks scan FPS (it is currently 15!!!)
         self._launch_map_server(canopies_map_yaml_path, namespace='canopies')
         self._launch_map_server(trunks_map_yaml_path, namespace='trunks')
         self._launch_amcl(namespace='canopies')
