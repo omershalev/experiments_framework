@@ -1,8 +1,8 @@
 import cv2
 import math
-import asta
-from experiments_framework.framework import cv_utils
-from experiments_framework.framework import viz_utils
+from framework import cv_utils
+from framework import viz_utils
+from astar.astar import AStar
 
 class PathPlan(AStar):
     def __init__(self, map_image):
