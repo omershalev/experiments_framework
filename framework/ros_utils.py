@@ -11,7 +11,7 @@ import rospy
 import rosbag
 import rosnode
 from scipy.signal import resample
-from geometry_msgs.msg import Pose2D
+from geometry_msgs.msg import PointStamped
 from rosgraph_msgs.msg import Log
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
@@ -98,7 +98,7 @@ def start_recording_bag(bag_path, topics=None):
     _logger.info('Starting bag recording')
     if topics is None:
         topics = ['-a']
-    record_proc = utils.new_process(['rosbag', 'record'] + topics + ['-O', '%s.bag' % bag_path])
+    record_proc = utils.new_process(['rosbag', 'record'] + topics + ['-O', bag_path])
     return record_proc
 
 
@@ -108,6 +108,7 @@ def stop_recording_bags():
     for node_name in nodes_list:
         if node_name.find('record') != -1:
             rosnode.kill_nodes([node_name])
+    time.sleep(2)
 
 
 def save_map(map_name, dir_name):
@@ -116,18 +117,22 @@ def save_map(map_name, dir_name):
     save_map_proc.kill()
 
 
-def bag_to_dataframe(bag_path, topic, fields):
+def bag_to_dataframe(bag_path, topic, fields, aggregation=None):
     data = {}
     timestamps = []
     for field in fields:
-        data[field] = np.array([])
+        data[field] = []
     if type(bag_path) is not tuple:
         bag_path = (bag_path,)
     for single_bag_path in bag_path:
         single_bag = rosbag.Bag(single_bag_path)
         for _, message, timestamp in single_bag.read_messages(topics=topic):
             for field in fields:
-                data[field] = np.append(data[field], utils.rgetattr(message, field))
+                if aggregation is not None:
+                    agg_res = aggregation(utils.rgetattr(message, field))
+                    data[field].append(agg_res)
+                else:
+                    data[field].append(utils.rgetattr(message, field))
             timestamps.append(timestamp.to_sec())
     df = pd.concat([pd.Series(data[field], index=timestamps, name=field) for field in fields], axis=1)
     return df
@@ -209,8 +214,11 @@ def trajectory_to_bag(pose_time_tuples_list, bag_path, topic='ugv_pose'):
         y = pose_time[1]
         t = pose_time[2]
         ros_time = rospy.Time.from_sec(t)
-        pose_2d_message = Pose2D(x, y, 0)
-        bag.write(topic, pose_2d_message, ros_time)
+        point_message = PointStamped()
+        point_message.point.x = x
+        point_message.point.y = y
+        point_message.header.stamp = ros_time
+        bag.write(topic, point_message, ros_time)
     bag.close()
 
 
