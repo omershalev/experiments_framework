@@ -157,9 +157,9 @@ def video_to_bag(video_path, topic, frame_id, bag_path):
     cv_bridge = CvBridge()
     frame_idx = 0
     while cap.isOpened():
-        ret, frame = cap.read()
+        is_success, frame = cap.read()
         video_timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) * 1e-3
-        if not ret:
+        if not is_success:
             break
         stamp = rospy.rostime.Time.from_sec(video_timestamp)
         message = cv_bridge.cv2_to_imgmsg(frame, encoding='bgr8')
@@ -183,9 +183,9 @@ def play_video_to_topic(video_path, topic, frame_id):
             prev_publish_time = None
             prev_video_timestamp = None
             while cap.isOpened():
-                ret, frame = cap.read()
+                is_success, frame = cap.read()
                 video_timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) * 1e-3
-                if not ret:
+                if not is_success:
                     break
                 stamp = rospy.rostime.Time.from_sec(video_timestamp)
                 message = cv_bridge.cv2_to_imgmsg(frame, encoding='bgr8')
