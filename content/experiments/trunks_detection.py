@@ -158,7 +158,8 @@ class TrunksDetectionExperiment(Experiment):
             viz_utils.show_image('semantic trunks', semantic_trunks_image)
 
         # Refine trunk locations
-        refined_trunk_coordinates_np = trunks_detection.refine_trunk_locations(image, trunk_coordinates_np, optimized_sigma)
+        refined_trunk_coordinates_np = trunks_detection.refine_trunk_locations(image, trunk_coordinates_np, optimized_sigma,
+                                                                               optimized_grid_dim_x, optimized_grid_dim_x)
         refined_trunk_points_list = refined_trunk_coordinates_np[orchard_pattern_np != -1]
         refined_trunk_coordinates_np[orchard_pattern_np == -1] = np.nan
         refined_semantic_trunks_image = cv_utils.draw_points_on_image(image, refined_trunk_points_list, color=(255, 255, 255))
@@ -177,31 +178,3 @@ class TrunksDetectionExperiment(Experiment):
         self.results[self.repetition_id]['semantic_trunks'] = semantic_trunks
         if viz_mode:
             viz_utils.show_image('refined semantic trunks', refined_semantic_trunks_image)
-        print ('end')
-
-
-if __name__ == '__main__':
-    pass
-
-    # TODO: remove this __main__!!!
-    # from content.data_pointers.lavi_april_18 import dji
-    #
-    # # image_key = dji.snapshots_80_meters.keys()[0]
-    # # image_descriptor = dji.snapshots_80_meters[image_key]
-    #
-    # pattern_np = np.ones((9, 10), dtype=np.int8)
-    # pattern_np[0:5, 0] = -1
-    #
-    # for image_key in dji.snapshots_80_meters.keys():
-    #     # if image_key in ['15-08-2', '15-08-2', '16-55-4', '16-55-5', '16-55-1', '16-55-2', '16-55-3']:
-    #     # if image_key not in ['15-53-3', '15-53-4']:
-    #     #     continue
-    #     image_descriptor = dji.snapshots_80_meters[image_key]
-    #     experiment = TrunksDetectionExperiment(name='trunks detection on %s' % image_key, data_sources=image_descriptor.path, working_dir=r'/home/omer/temp',
-    #                                            params={'crop_ratio': 0.8, 'initial_sigma_to_dim_y_ratio': 0.33, 'grid_size_for_optimization': 7,
-    #                                                    'pattern': pattern_np}, metadata={'image_key': image_key, 'altitude': 80})
-    #     experiment.run(repetitions=1, viz_mode=True)
-    #     break
-
-    # TODO: in the runner play with N, crop_ratio, initial_sigma_to_dim_y, maybe also with the pattern??
-    # TODO: allow larger range for NM parameters!!!!!!

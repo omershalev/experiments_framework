@@ -14,7 +14,7 @@ class Icp(Experiment):
 
     def task(self, **kwargs):
         ros_utils.start_master(use_sim_time=True)
-        ros_utils.launch(direct_path=r'/home/omer/orchards_ws/src/air_ground_orchard_navigation/jackal_scan_matcher.launch') # TODO: change
+        ros_utils.launch(direct_path=r'/home/omer/orchards_ws/astar/air_ground_orchard_navigation/jackal_scan_matcher.launch') # TODO: change
         ros_utils.start_recording_bag(os.path.join(self.repetition_dir, self.name), ['/scanmatcher_pose',])
         _, bag_duration = ros_utils.play_bag(self.data_sources, use_clock=True)
 

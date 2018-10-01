@@ -27,7 +27,7 @@ class TemplateMatchingExperiment(Experiment):
 
         map_image = cv2.imread(map_image_path)
         localization_image = cv2.imread(localization_image_path)
-        localization_image = cv_utils.warp_image(localization_image, localization_alignment_points, map_alignment_points)
+        localization_image, _ = cv_utils.warp_image(localization_image, localization_alignment_points, map_alignment_points)
         roi_image, _, _ = cv_utils.crop_region(localization_image, roi_center[0], roi_center[1], roi_size, roi_size)
         matches_image = map_image.copy()
         cv2.circle(matches_image, roi_center, radius=15, color=(0, 0, 255), thickness=-1)
@@ -64,10 +64,10 @@ if __name__ == '__main__':
     experiment = TemplateMatchingExperiment(name='template_matching_%s_to_%s' % (image_key1, image_key2),
                                             data_sources={'map_image_path': snapshots_80_meters[image_key1].path,
                                                           'localization_image_path': snapshots_80_meters[image_key2].path,
-                                                          'roi_center': (2000, 2005), # TODO: change!!!
+                                                          'roi_center': (1900, 2000), # TODO: change!!!
                                                           'map_alignment_points': points1,
                                                           'localization_alignment_points': points2},
-                                            params={'roi_size': 500}, # TODO: change!!! (you can play with this parameter and show the different results but everything still doesn't help...)
+                                            params={'roi_size': 350}, # TODO: change!!! (you can play with this parameter and show the different results but everything still doesn't help...)
                                             working_dir=r'/home/omer/temp', # TODO: change!!!
                                             metadata={}# TODO: change!!!
                                             )

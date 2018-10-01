@@ -24,7 +24,7 @@ class MapAlignmentExperiment(Experiment):
         # Align images by markers
         marker_locations = self.data_sources['markers_locations']
         baseline_marker_locations = self.data_sources['baseline_markers_locations']
-        warped_image_by_markers = cv_utils.warp_image(image=image, points_in_image=marker_locations, points_in_baseline=baseline_marker_locations)
+        warped_image_by_markers, _ = cv_utils.warp_image(image=image, points_in_image=marker_locations, points_in_baseline=baseline_marker_locations)
         cv2.imwrite(os.path.join(self.repetition_dir, 'warped by markers.jpg'), warped_image_by_markers)
         mse = cv_utils.calculate_image_diff(baseline_image, warped_image_by_markers, method='mse')
         ssim = cv_utils.calculate_image_diff(baseline_image, warped_image_by_markers, method='ssim')
@@ -41,12 +41,13 @@ class MapAlignmentExperiment(Experiment):
         # Align images by trunks points
         trunks = self.data_sources['trunks_points']
         baseline_trunks = self.data_sources['baseline_trunks_points']
-        warped_image_by_trunks = cv_utils.warp_image(image=image, points_in_image=trunks, points_in_baseline=baseline_trunks)
+        warped_image_by_trunks, _ = cv_utils.warp_image(image=image, points_in_image=trunks, points_in_baseline=baseline_trunks)
         cv2.imwrite(os.path.join(self.repetition_dir, 'warped by trunks.jpg'), warped_image_by_trunks)
         mse = cv_utils.calculate_image_diff(baseline_image, warped_image_by_trunks, method='mse')
         ssim = cv_utils.calculate_image_diff(baseline_image, warped_image_by_trunks, method='ssim')
         self.results['by_trunks'] = {'mse': mse, 'ssim': ssim}
 
+        # TODO: I should apply RANSAC on mine too!!!!!
 
 if __name__ == '__main__':
 
@@ -64,14 +65,14 @@ if __name__ == '__main__':
 
     image_descriptor = dji.snapshots_60_meters[image_key]
     baseline_image_descriptor = dji.snapshots_60_meters[baseline_image_key]
-    trunks_points = summary1['results']['1']['pattern_points']
-    baseline_trunks_points = summary2['results']['1']['pattern_points']
+    trunks_points = summary1['results']['1']['trunk_points_list']
+    baseline_trunks_points = summary2['results']['1']['trunk_points_list']
     marker_locations = all_markers_locations[image_key]
     baseline_marker_locations = all_markers_locations[baseline_image_key]
 
 
     experiment = MapAlignmentExperiment(name='map alignment of %s to %s' % (image_key, baseline_image_key),
-                                        data_sources={'baseline_image_path': baseline_image_descriptor.path, 'image_path': image_descriptor.path,
+                                        data_sources={'image_path': image_descriptor.path, 'baseline_image_path': baseline_image_descriptor.path,
                                                       'trunks_points': trunks_points, 'baseline_trunks_points': baseline_trunks_points,
                                                       'markers_locations': marker_locations, 'baseline_markers_locations': baseline_marker_locations},
                                         working_dir=r'/home/omer/temp')

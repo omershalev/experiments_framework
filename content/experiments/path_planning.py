@@ -15,16 +15,17 @@ class PathPlanningExperiment(Experiment):
 
     def task(self, **kwargs):
 
-        image = cv2.imread(self.data_sources['image_path'])
+        image = cv2.imread(self.data_sources['map_image_path'])
         trunk_points_list = self.data_sources['trunk_points_list']
         waypoints = self.data_sources['waypoints']
+        upper_left = self.data_sources['map_upper_left']
+        lower_right = self.data_sources['map_lower_right']
         trunk_radius = self.params['trunk_radius']
         canopy_sigma = self.params['canopy_sigma']
         gaussian_scale_factor = self.params['gaussian_scale_factor']
-        bounding_box_expand_ratio = self.params['bounding_box_expand_ratio']
+        bounding_box_expand_ratio = self.params['bounding_box_expand_ratio'] # TODO: why isn't this used?
 
-        # Crop the image around the trunks
-        upper_left, lower_right = cv_utils.get_bounding_box(image, trunk_points_list, expand_ratio=bounding_box_expand_ratio)
+        # Crop the image
         cropped_image = image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
         trunk_points_list = (np.array(trunk_points_list) - np.array(upper_left)).tolist()
         waypoints = (np.array(waypoints) - np.array(upper_left)).tolist()
