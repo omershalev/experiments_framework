@@ -5,7 +5,7 @@ import json
 from framework import cv_utils
 from framework import utils
 from framework import ros_utils
-from computer_vision import segmentation
+from computer_vision import maps_generation
 from content.data_pointers.lavi_april_18 import dji
 from framework import config
 from framework import logger
@@ -38,8 +38,8 @@ if __name__ == '__main__':
                     continue
             points = markers_locations[key]
             image = cv2.imread(data_descriptor.path)
-            map_image = segmentation.extract_canopies_map(image)
-            (upper_left_x, upper_left_y), (lower_right_x, lower_right_y) = cv_utils.get_bounding_box(map_image, points, expand_ratio=config.markers_bounding_box_expand_ratio)
+            map_image = maps_generation.generate_canopies_map(image)
+            (upper_left_x, upper_left_y), (lower_right_x, lower_right_y) = cv_utils.get_bounding_box(map_image, points, expand_ratio=config.bounding_box_expand_ratio)
             map_image = map_image[upper_left_y:lower_right_y, upper_left_x:lower_right_x]
 
             if fork_shaped:
@@ -48,7 +48,7 @@ if __name__ == '__main__':
                 ros_utils.trajectory_to_bag(pose_time_tuples_list, bag_path=os.path.join(execution_dir, '%s_fork_trajectory.bag' % key))
                 ros_utils.downsample_bag(input_bag_path=os.path.join(execution_dir, '%s_fork_trajectory.bag' % key),
                                          topic='ugv_pose',
-                                         target_frequency=config.synthetic_scan_target_frequency)
+                                         target_frequency=config.target_system_frequency)
 
             if S_shaped:
                 _logger.info('Mark S-shaped trajectory')
@@ -56,7 +56,7 @@ if __name__ == '__main__':
                 ros_utils.trajectory_to_bag(pose_time_tuples_list, bag_path=os.path.join(execution_dir, '%s_S_trajectory.bag' % key))
                 ros_utils.downsample_bag(input_bag_path=os.path.join(execution_dir, '%s_S_trajectory.bag' % key),
                                          topic='ugv_pose',
-                                         target_frequency=config.synthetic_scan_target_frequency)
+                                         target_frequency=config.target_system_frequency)
 
             if random_shaped:
                 _logger.info('Mark random-shaped trajectory')
@@ -64,7 +64,7 @@ if __name__ == '__main__':
                 ros_utils.trajectory_to_bag(pose_time_tuples_list, bag_path=os.path.join(execution_dir, '%s_random_trajectory.bag' % key))
                 ros_utils.downsample_bag(input_bag_path=os.path.join(execution_dir, '%s_random_trajectory.bag' % key),
                                          topic='ugv_pose',
-                                         target_frequency=config.synthetic_scan_target_frequency)
+                                         target_frequency=config.target_system_frequency)
                 print pose_time_tuples_list
                 cv2.imwrite(r'/home/omer/Documents/another2.png', map_image)
             break

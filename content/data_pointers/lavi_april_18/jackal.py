@@ -1,6 +1,6 @@
 import os
-import experiments_framework.framework.config as config
-from experiments_framework.framework.data_descriptor import DataDescriptor
+import framework.config as config
+from framework.data_descriptor import DataDescriptor
 
 base_path = config.base_raw_data_path
 

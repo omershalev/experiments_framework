@@ -28,6 +28,6 @@ if __name__ == '__main__':
 
             marker_positions[key] = [(x_ul, y_ul), (x_ur, y_ur), (x_lr, y_lr), (x_ll, y_ll)]
 
-        with open(os.path.join(config.base_output_path, data_dict_name + '.json'), 'w') as j:
+        with open(os.path.join(config.temp_output_path, data_dict_name + '.json'), 'w') as j:
             json.dump(marker_positions, j, indent=4)
 

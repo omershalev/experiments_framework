@@ -4,7 +4,8 @@ import cv2
 import experiments_framework.framework.cv_utils as cv_utils
 import experiments_framework.content.data_pointers.lavi_april_18.dji as dji_data
 
-image_paths_list = [descriptor.path for descriptor in dji_data.snapshots_60_meters.values() + dji_data.snapshots_80_meters.values()]
+# image_paths_list = [descriptor.path for descriptor in dji_data.snapshots_60_meters.values() + dji_data.snapshots_80_meters.values()]
+image_paths_list = [r'/home/omer/Desktop/purple.png']
 
 
 if __name__ == '__main__':

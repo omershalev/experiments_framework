@@ -6,21 +6,21 @@ base_path = config.base_raw_data_path
 markers_locations_path = config.markers_locations_path
 
 snapshots_60_meters = {
-                        '15-20-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0137.JPG'), 'table in 5-6, 4 landmarks, 60? meters'),
-                        '15-20-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0138.JPG'), 'table in 5-6, 4 landmarks, 60? meters'),
-                        '15-20-3': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0139.JPG'), '4 landmarks, 60? meters'),
-                        '15-20-4': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0140.JPG'), '4 landmarks, 60? meters'),
-                        '15-20-5': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0141.JPG'), '4 landmarks, 60? meters'),
+                        '15-20-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0137.JPG'), 'table in 5-6, 4 landmarks, 60 meters'),
+                        '15-20-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0138.JPG'), 'table in 5-6, 4 landmarks, 60 meters'),
+                        '15-20-3': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0139.JPG'), '4 landmarks, 60 meters'),
+                        '15-20-4': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0140.JPG'), '4 landmarks, 60 meters'),
+                        '15-20-5': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0141.JPG'), '4 landmarks, 60 meters'),
 
                         '16-54-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0159.JPG'), '4 landmarks, 60 meters'),
                         '16-54-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0160.JPG'), '4 landmarks, 60 meters'),
                         '16-54-3': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0161.JPG'), '4 landmarks, 60 meters'),
 
-                        '19-03-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0179.JPG'), '4 landmarks, 60? meters'),
-                        '19-03-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0180.JPG'), '4 landmarks, 60? meters'),
-                        '19-03-3': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0181.JPG'), '4 landmarks, 60? meters'),
-                        '19-03-4': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0182.JPG'), '4 landmarks, 60? meters'),
-                        '19-03-5': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0183.JPG'), '4 landmarks, 60? meters')
+                        '19-03-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0179.JPG'), '4 landmarks, 60 meters'),
+                        '19-03-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0180.JPG'), '4 landmarks, 60 meters'),
+                        '19-03-3': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0181.JPG'), '4 landmarks, 60 meters'),
+                        '19-03-4': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0182.JPG'), '4 landmarks, 60 meters'),
+                        '19-03-5': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0183.JPG'), '4 landmarks, 60 meters')
                       }
 
 snapshots_60_meters_markers_locations_json_path = os.path.join(markers_locations_path, 'snapshots_60_meters.json')
@@ -43,10 +43,10 @@ snapshots_80_meters = {
                          '15-19-4': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0135.JPG'), 'table in 5-6, 4 landmarks, 80 meters'),
                          '15-19-5': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0136.JPG'), 'table in 5-6, 4 landmarks, 80 meters'),
 
-                         '15-53-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0149.JPG'), '4 landmarks, 80? meters'),
-                         '15-53-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0150.JPG'), '4 landmarks, 80? meters'),
-                         '15-53-3': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0151.JPG'), '4 landmarks, 80? meters'),
-                         '15-53-4': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0152.JPG'), '4 landmarks, 80? meters'),
+                         '15-53-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0149.JPG'), '4 landmarks, 80 meters'),
+                         '15-53-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0150.JPG'), '4 landmarks, 80 meters'),
+                         '15-53-3': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0151.JPG'), '4 landmarks, 80 meters'),
+                         '15-53-4': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0152.JPG'), '4 landmarks, 80 meters'),
 
                          '16-55-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0162.JPG'), '4 landmarks, 80 meters'),
                          '16-55-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0163.JPG'), '4 landmarks, 80 meters'),
@@ -54,10 +54,16 @@ snapshots_80_meters = {
                          '16-55-4': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0165.JPG'), '4 landmarks, 80 meters'),
                          '16-55-5': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0166.JPG'), '4 landmarks, 80 meters'),
 
-                         '19-04-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0184.JPG'), '4 landmarks, 80? meters'),
-                         '19-04-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0185.JPG'), '4 landmarks, 80? meters'),
-                         '19-04-3': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0186.JPG'), '4 landmarks, 80? meters'),
-                         '19-04-4': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0187.JPG'), '4 landmarks, 80? meters')
+                         '19-04-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0184.JPG'), '4 landmarks, 80 meters'),
+                         '19-04-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0185.JPG'), '4 landmarks, 80 meters'),
+                         '19-04-3': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0186.JPG'), '4 landmarks, 80 meters'),
+                         '19-04-4': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0187.JPG'), '4 landmarks, 80 meters')
                       }
 
 snapshots_80_meters_markers_locations_json_path = os.path.join(markers_locations_path, 'snapshots_80_meters.json')
+
+trunks_detection_results_dir = os.path.join(config.base_results_path, 'trunks_detection')
+selected_trunks_detection_experiments_and_repetitions = [#('20180922-234018_trunks detection on 15-08-2_temp', 1),
+                                                         ('20180924-190957_trunks_detection_on_15-08-2', 2),
+                                                         ('20180926-034744_trunks_detection_on_19-04-4', 1),
+                                                         ('20180924-193305_trunks_detection_on_15-08-1', 1)]
