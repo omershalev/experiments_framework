@@ -167,6 +167,8 @@ class AmclSimulationExperiment(Experiment):
                 point1 = localization_semantic_trunks[waypoint[0]]
                 point2 = localization_semantic_trunks[waypoint[1]]
                 waypoints_coordinates.append(((point1[0] + point2[0]) / 2, (point1[1] + point2[1]) / 2))
+            else:
+                waypoints_coordinates.append(localization_semantic_trunks[waypoint])
         canopy_sigma = self.params['cost_map_canopy_sigma']
         path_planning_experiment = PathPlanningExperiment(name='path_planning',
                                                           data_sources={'map_image_path': image_for_trajectory_path,
