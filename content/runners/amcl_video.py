@@ -7,7 +7,7 @@ from framework import config
 if __name__ == '__main__':
 
     ros_utils.start_master(use_sim_time=False)
-    ros_utils.launch_rviz(os.path.join(config.root_dir_path, 'src/experiments_framework/framework/amcl.rviz'))
+    ros_utils.launch_rviz(os.path.join(config.root_dir_path, 'astar/experiments_framework/framework/amcl.rviz'))
 
     # Launch base_link to contours_scan_link static TF
     ros_utils.launch(package='localization',
@@ -18,11 +18,11 @@ if __name__ == '__main__':
     ros_utils.launch(package='localization',
                      launch_file='synthetic_scan_generator.launch',
                      argv={'virtual_ugv_mode': False,
-                           'min_angle': config.min_scan_angle,
-                           'max_angle': config.max_scan_angle,
-                           'samples_num': config.scan_samples_num,
-                           'min_distance': config.min_scan_distance,
-                           'max_distance': config.max_scan_distance,
+                           'min_angle': config.synthetic_scan_min_angle,
+                           'max_angle': config.synthetic_scan_max_angle,
+                           'samples_num': config.synthetic_scan_samples_num,
+                           'min_distance': config.synthetic_scan_min_distance,
+                           'max_distance': config.synthetic_scan_max_distance,
                            'resolution': 0.008, # TODO: choose this one more wisely
                            'r_primary_search_samples': 25,  # TODO: read from config
                            'r_secondary_search_step': 3})  # TODO: read from config
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     # Launch map server
     ros_utils.launch(package='localization',
                      launch_file='map.launch',
-                     argv={'map_yaml_path': r'/home/omer/Downloads/panorama_map.yaml'})
+                     argv={'map_yaml_path': r'/home/omer/Downloads/panorama_cropped_map.yaml'})
 
     # Wait for map server to load
     ros_utils.wait_for_rosout_message(node_name='map_server',
