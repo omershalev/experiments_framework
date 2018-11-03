@@ -41,14 +41,14 @@ plot4_pattern = np.array([[-1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
                           [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]], dtype=np.int8)
 
 plot1_measured_row_widths = [7.3, 7.15, 6.9, 7.2, 6.9]
-plot2_measured_row_widths = []
-plot34_measured_row_widths = []
+plot2_measured_row_widths = [7.07, 6.87, 7.04, 7.24]
+plot34_measured_row_widths = [5.9, 6.05, 6.25]
 plot1_measured_intra_row_distances = [6.0, 5.7, 5.9, 5.9, 5.8, 5.85]
-plot2_measured_intra_row_distances = []
-plot34_measured_intra_row_distances = []
+plot2_measured_intra_row_distances = [4.97, 4.79, 5.2, 5.0]
+plot34_measured_intra_row_distances = [2.1, 2.3, 2.7, 3.3, 2.9, 3.1]
 plot1_measured_trunks_perimeters = [0.75, 0.80, 0.85, 0.87, 0.84, 0.8, 0.86, 0.72, 0.83, 0.80]
-plot2_measured_trunks_perimeters = []
-plot34_measured_trunks_perimeters = []
+plot2_measured_trunks_perimeters = [0.67, 0.63, 0.60, 0.56, 0.60, 0.53]
+plot34_measured_trunks_perimeters = [0.38, 0.33, 0.44]
 
 plot1_trajectories = {
     'narrow_row': [('8/I', '9/I'), ('8/A', '9/A')],
