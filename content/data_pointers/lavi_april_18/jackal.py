@@ -1,5 +1,5 @@
 import os
-import framework.config as config
+from framework import config
 from framework.data_descriptor import DataDescriptor
 
 base_path = config.base_raw_data_path
@@ -16,5 +16,3 @@ jackal_18 = {'15-09-35': DataDescriptor(os.path.join(base_path, 'jackal_18', '20
 
 jackal_19 = [
             ]
-
-forks = [(name, descriptor) for (name, descriptor) in jackal_18.iteritems() if name in ['15-11-01', '17-09-14', '17-18-53', '17-45-36']]
