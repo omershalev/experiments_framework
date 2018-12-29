@@ -102,6 +102,15 @@ def draw_lines_on_image(image, lines_list, color, thickness=5):
     return image_copy
 
 
+def put_shaded_text_on_image(image, label, location, color):
+    image_copy = image.copy()
+    cv2.putText(image_copy, label, tuple(np.array(location) + np.array([-38, -68])),
+                fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=(30, 30, 30), thickness=10, lineType=cv2.LINE_AA)
+    cv2.putText(image_copy, label, tuple(np.array(location) + np.array([-40, -70])),
+                fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=color, thickness=10, lineType=cv2.LINE_AA)
+    return image_copy
+
+
 def get_bounding_box(image, points, expand_ratio=0.0):
     x, y, w, h = cv2.boundingRect(np.array(points))
     upper_left_x = max(0, x - int(expand_ratio*w))
