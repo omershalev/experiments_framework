@@ -20,10 +20,6 @@ class PathPlanningExperiment(Experiment):
         waypoints = self.data_sources['waypoints']
         upper_left = self.data_sources['map_upper_left']
         lower_right = self.data_sources['map_lower_right']
-        trunk_radius = self.params['trunk_radius']
-        canopy_sigma = self.params['canopy_sigma']
-        gaussian_scale_factor = self.params['gaussian_scale_factor']
-        bounding_box_expand_ratio = self.params['bounding_box_expand_ratio'] # TODO: why isn't this used?
 
         # Crop the image
         cropped_image = image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
@@ -31,10 +27,7 @@ class PathPlanningExperiment(Experiment):
         waypoints = (np.array(waypoints) - np.array(upper_left)).tolist()
 
         # Get cost map
-        cost_map = maps_generation.generate_cost_map(cropped_image, trunk_points_list, canopy_sigma, gaussian_scale_factor,
-                                                                 gaussian_square_size_to_sigma_ratio=3,
-                                                                 gaussian_circle_radius_to_sigma_ratio=2.5,
-                                                                 trunk_radius=trunk_radius)
+        cost_map = maps_generation.generate_cost_map(cropped_image)
         cv2.imwrite(os.path.join(self.repetition_dir, 'cost_map.jpg'), 255.0 * cost_map)
 
         # Plan a path
@@ -44,5 +37,12 @@ class PathPlanningExperiment(Experiment):
             trajctory += list(path_planner.astar(tuple(section_start), tuple(section_end)))
         self.results[self.repetition_id]['trajectory'] = trajctory
         trajectory_image = cv2.cvtColor(np.uint8(255.0 * cost_map), cv2.COLOR_GRAY2BGR)
-        trajectory_image = cv_utils.draw_points_on_image(trajectory_image, trajctory, color=(255, 255, 0), radius=5)
+        trajectory_image = cv_utils.draw_points_on_image(trajectory_image, trajctory, color=(255, 0, 255), radius=5)
+        semantic_trunks = self.params['semantic_trunks']
+        trajectory_image = cv_utils.draw_points_on_image(trajectory_image,
+                                                         [np.array(semantic_trunks[trunk_label]) - np.array(upper_left) for trunk_label in semantic_trunks.keys()],
+                                                         color=(0, 200, 0))
+        for trunk_label in semantic_trunks.keys():
+            cv2.putText(trajectory_image, trunk_label, tuple(np.array(semantic_trunks[trunk_label]) - np.array(upper_left) + np.array([-40, -70])),
+                        fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=(255, 255, 0), thickness=8, lineType=cv2.LINE_AA)
         cv2.imwrite(os.path.join(self.repetition_dir, 'trajectory.jpg'), trajectory_image)
