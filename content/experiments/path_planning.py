@@ -3,6 +3,7 @@ import cv2
 import os
 
 from computer_vision import maps_generation
+from computer_vision import segmentation
 from computer_vision.astar_path_planner import AstarPathPlanner
 from framework.experiment import Experiment
 from framework import cv_utils
@@ -16,14 +17,12 @@ class PathPlanningExperiment(Experiment):
     def task(self, **kwargs):
 
         image = cv2.imread(self.data_sources['map_image_path'])
-        trunk_points_list = self.data_sources['trunk_points_list']
         waypoints = self.data_sources['waypoints']
         upper_left = self.data_sources['map_upper_left']
         lower_right = self.data_sources['map_lower_right']
 
         # Crop the image
         cropped_image = image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
-        trunk_points_list = (np.array(trunk_points_list) - np.array(upper_left)).tolist()
         waypoints = (np.array(waypoints) - np.array(upper_left)).tolist()
 
         # Get cost map
@@ -35,8 +34,21 @@ class PathPlanningExperiment(Experiment):
         trajctory = []
         for section_start, section_end in zip(waypoints[:-1], waypoints[1:]):
             trajctory += list(path_planner.astar(tuple(section_start), tuple(section_end)))
+
+        # Save results
         self.results[self.repetition_id]['trajectory'] = trajctory
-        trajectory_image = cv2.cvtColor(np.uint8(255.0 * cost_map), cv2.COLOR_GRAY2BGR)
-        trajectory_image = cv_utils.draw_points_on_image(trajectory_image, trajctory, color=(255, 0, 255), radius=5)
-        cv2.imwrite(os.path.join(self.repetition_dir, 'trajectory.jpg'), trajectory_image)
-        self.results[self.repetition_id]['trajectory_image_path'] = os.path.join(self.repetition_dir, 'trajectory.jpg')
+
+        trajectory_on_cost_map_image = cv2.cvtColor(np.uint8(255.0 * cost_map), cv2.COLOR_GRAY2BGR)
+        trajectory_on_cost_map_image = cv_utils.draw_points_on_image(trajectory_on_cost_map_image, trajctory, color=(0, 255, 255), radius=5)
+        cv2.imwrite(os.path.join(self.repetition_dir, 'trajectory_on_cost_map.jpg'), trajectory_on_cost_map_image)
+        self.results[self.repetition_id]['trajectory_on_cost_map_path'] = os.path.join(self.repetition_dir, 'trajectory_on_cost_map.jpg')
+
+        _, trajectory_on_mask_image = segmentation.extract_canopy_contours(cropped_image)
+        trajectory_on_mask_image = cv2.cvtColor(trajectory_on_mask_image, cv2.COLOR_GRAY2BGR)
+        trajectory_on_mask_image = cv_utils.draw_points_on_image(trajectory_on_mask_image, trajctory, color=(0, 255, 255), radius=5)
+        cv2.imwrite(os.path.join(self.repetition_dir, 'trajectory_on_mask.jpg'), trajectory_on_mask_image)
+        self.results[self.repetition_id]['trajectory_on_mask_path'] = os.path.join(self.repetition_dir, 'trajectory_on_mask.jpg')
+
+        trajectory_on_image = cv_utils.draw_points_on_image(cropped_image, trajctory, color=(0, 255, 255), radius=5)
+        cv2.imwrite(os.path.join(self.repetition_dir, 'trajectory_on_image.jpg'), trajectory_on_image)
+        self.results[self.repetition_id]['trajectory_on_image_path'] = os.path.join(self.repetition_dir, 'trajectory_on_image.jpg')
