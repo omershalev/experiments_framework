@@ -38,11 +38,5 @@ class PathPlanningExperiment(Experiment):
         self.results[self.repetition_id]['trajectory'] = trajctory
         trajectory_image = cv2.cvtColor(np.uint8(255.0 * cost_map), cv2.COLOR_GRAY2BGR)
         trajectory_image = cv_utils.draw_points_on_image(trajectory_image, trajctory, color=(255, 0, 255), radius=5)
-        semantic_trunks = self.params['semantic_trunks']
-        trajectory_image = cv_utils.draw_points_on_image(trajectory_image,
-                                                         [np.array(semantic_trunks[trunk_label]) - np.array(upper_left) for trunk_label in semantic_trunks.keys()],
-                                                         color=(0, 200, 0))
-        for trunk_label in semantic_trunks.keys():
-            cv2.putText(trajectory_image, trunk_label, tuple(np.array(semantic_trunks[trunk_label]) - np.array(upper_left) + np.array([-40, -70])),
-                        fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=(255, 255, 0), thickness=8, lineType=cv2.LINE_AA)
         cv2.imwrite(os.path.join(self.repetition_dir, 'trajectory.jpg'), trajectory_image)
+        self.results[self.repetition_id]['trajectory_image_path'] = os.path.join(self.repetition_dir, 'trajectory.jpg')

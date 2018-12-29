@@ -71,7 +71,17 @@ if __name__ == '__main__':
                                                                                               goal_label_2.replace('/', '')),
                                             data_sources={'map_image_path': image_path, 'trunk_points_list': trunk_points_list,
                                                           'map_upper_left': upper_left, 'map_lower_right': lower_right, 'waypoints': waypoints},
-                                            params={'semantic_trunks': {label: semantic_trunks[label] for label in [start_label_1, start_label_2, goal_label_1, goal_label_2]}},
                                             working_dir=execution_dir, metadata=trunks_detection_summary['metadata'])
         experiment.run(repetitions=1)
+        trajectory_image = cv2.imread(experiment.results[1]['trajectory_image_path'])
+        selected_trunks = {label: semantic_trunks[label] for label in [start_label_1, start_label_2, goal_label_1, goal_label_2]}
+        trajectory_image = cv_utils.draw_points_on_image(trajectory_image,
+                                                         [np.array(selected_trunks[trunk_label]) - np.array(upper_left) for trunk_label in selected_trunks.keys()],
+                                                         color=(0, 255, 0), radius=20)
+        for trunk_label in selected_trunks.keys():
+            cv2.putText(trajectory_image, trunk_label, tuple(np.array(semantic_trunks[trunk_label]) - np.array(upper_left) + np.array([-38, -68])),
+                        fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=(30, 30, 30), thickness=10, lineType=cv2.LINE_AA)
+            cv2.putText(trajectory_image, trunk_label, tuple(np.array(semantic_trunks[trunk_label]) - np.array(upper_left) + np.array([-40, -70])),
+                        fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=(0, 255, 0), thickness=10, lineType=cv2.LINE_AA)
+        cv2.imwrite(os.path.join(experiment.experiment_dir, 'trajectory_with_labels.jpg'), trajectory_image)
         i += 1
