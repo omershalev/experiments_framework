@@ -19,13 +19,6 @@ td_obstacle_1_experiment_name = 'manual_apr_15-19-1'
 td_obstacle_2_experiment_name = 'manual_apr_15-17-1'
 obstacle_1_location = (2743, 1320)
 obstacle_2_location = (2181, 1770)
-# trajectory_waypoints = [('3/A', '4/A'),
-#                         ('3/I', '4/I'),
-#                         ('4/I', '5/I'),
-#                         ('5/E', '6/E'),
-#                         ('5/B', '6/B'),
-#                         ('7/C', '8/C'),
-#                         ('7/I', '8/I')]
 trajectory_waypoints = [('8/A', '9/A'),
                         ('9/C', '10/C'),
                         ('9/E', '10/E'),
@@ -36,22 +29,17 @@ trajectory_waypoints = [('8/A', '9/A'),
                         ('2/F', '3/F'),
                         ('4/F', '5/F'),
                         ('6/A', '7/A')]
-
-# trajectory_waypoints = [('8/I', '9/I'), # THIS IS A WIN for obstacle_2
-#                         ('7/C', '8/C')]
-# trajectory_waypoints = [('4/F', '5/F'), # THIS IS A WIN for obstacle_1
-#                         ('6/A', '7/A')]
 obstacle_size = [80, 80]
 #################################################################################################
 
 
-def get_trajectory(td_summary, image_path, start_waypoint_idx):
+def get_trajectory(td_summary, image_path, start_waypoint_idx, end_waypoint_idx=None):
     semantic_trunks = td_summary['results']['0']['semantic_trunks']
     trunk_points_list = semantic_trunks.values()
     image = cv2.imread(image_path)
     upper_left, lower_right = cv_utils.get_bounding_box(image, trunk_points_list, expand_ratio=config.bounding_box_expand_ratio)
     waypoints_coordinates = []
-    for waypoint in trajectory_waypoints[start_waypoint_idx:]:
+    for waypoint in trajectory_waypoints[start_waypoint_idx:end_waypoint_idx]:
         point1 = semantic_trunks[waypoint[0]]
         point2 = semantic_trunks[waypoint[1]]
         waypoints_coordinates.append(((point1[0] + point2[0]) / 2, (point1[1] + point2[1]) / 2))
@@ -61,7 +49,17 @@ def get_trajectory(td_summary, image_path, start_waypoint_idx):
                                                       'waypoints': waypoints_coordinates},
                                         working_dir=execution_dir, metadata=td_summary['metadata'])
     experiment.run(repetitions=1)
-    trajectory_image = cv2.imread(experiment.results[1]['trajectory_on_image_path'])
+    trajectory = experiment.results[1]['trajectory']
+    return trajectory, waypoints_coordinates
+
+
+def plot_trajectory(td_summary, image_path, trajectory, waypoints_coordinates, start_waypoint_idx, output_file_path):
+    semantic_trunks = td_summary['results']['0']['semantic_trunks']
+    trunk_points_list = semantic_trunks.values()
+    image = cv2.imread(image_path)
+    upper_left, lower_right = cv_utils.get_bounding_box(image, trunk_points_list, expand_ratio=config.bounding_box_expand_ratio)
+    cropped_image = image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
+    trajectory_image = cv_utils.draw_points_on_image(cropped_image, trajectory, color=(0, 255, 255), radius=5)
     trajectory_image = cv_utils.draw_points_on_image(trajectory_image,
                                                      [tuple(np.array(coordinates) - np.array(upper_left)) for coordinates in waypoints_coordinates],
                                                      color=(0, 255, 255), radius=30)
@@ -70,8 +68,7 @@ def get_trajectory(td_summary, image_path, start_waypoint_idx):
         trajectory_image = cv_utils.put_shaded_text_on_image(trajectory_image, label=chr(label_idx + 65),
                                                              location=tuple(np.array(coordinates) - np.array(upper_left)), color=(0, 255, 255))
         label_idx += 1
-    cv2.imwrite(os.path.join(experiment.experiment_dir, 'trajectory_on_image_with_points.jpg'), trajectory_image)
-
+    cv2.imwrite(os.path.join(output_file_path), trajectory_image)
 
 
 if __name__ == '__main__':
@@ -88,14 +85,22 @@ if __name__ == '__main__':
     obstacle_1_image_path = td_obstacle_1_summary['data_sources']
     obstacle_2_image_path = td_obstacle_2_summary['data_sources']
 
-    get_trajectory(td_baseline_summary, baseline_image_path, start_waypoint_idx=0)
+    trajectory, waypoints_coordinates = get_trajectory(td_baseline_summary, baseline_image_path, start_waypoint_idx=0)
+    plot_trajectory(td_baseline_summary, baseline_image_path, trajectory, waypoints_coordinates, start_waypoint_idx=0,
+                    output_file_path=os.path.join(execution_dir, 'no_obstacle_trajectory.jpg'))
 
     obstacle_1_image = cv2.imread(obstacle_1_image_path)
-    cv2.rectangle(obstacle_1_image, tuple(np.array(obstacle_1_location) - np.array(obstacle_size)), tuple(np.array(obstacle_1_location) + np.array(obstacle_size)), color=(0, 200, 0), thickness=-1)
-    cv2.imwrite(os.path.join(execution_dir, 'obstacle_1_image.jpg'), obstacle_1_image)
-    get_trajectory(td_obstacle_1_summary, os.path.join(execution_dir, 'obstacle_1_image.jpg'), start_waypoint_idx=2)
+    cv2.rectangle(obstacle_1_image, tuple(np.array(obstacle_1_location) - np.array(obstacle_size)),
+                  tuple(np.array(obstacle_1_location) + np.array(obstacle_size)), color=(0, 200, 0), thickness=-1)
+    cv2.imwrite(os.path.join(execution_dir, 'synthetic_green_obstacle_1_image.jpg'), obstacle_1_image)
+    trajectory, waypoints_coordinates = get_trajectory(td_obstacle_1_summary, os.path.join(execution_dir, 'synthetic_green_obstacle_1_image.jpg'), start_waypoint_idx=2)
+    plot_trajectory(td_obstacle_1_summary, obstacle_1_image_path, trajectory, waypoints_coordinates, start_waypoint_idx=2,
+                    output_file_path=os.path.join(execution_dir, 'obstacle_1_trajectory.jpg'))
 
     obstacle_2_image = cv2.imread(obstacle_2_image_path)
-    cv2.rectangle(obstacle_2_image, tuple(np.array(obstacle_2_location) - np.array(obstacle_size)), tuple(np.array(obstacle_2_location) + np.array(obstacle_size)), color=(0, 200, 0), thickness=-1)
-    cv2.imwrite(os.path.join(execution_dir, 'obstacle_2_image.jpg'), obstacle_2_image)
-    get_trajectory(td_obstacle_2_summary, os.path.join(execution_dir, 'obstacle_2_image.jpg'), start_waypoint_idx=5)
+    cv2.rectangle(obstacle_2_image, tuple(np.array(obstacle_2_location) - np.array(obstacle_size)),
+                  tuple(np.array(obstacle_2_location) + np.array(obstacle_size)), color=(0, 200, 0), thickness=-1)
+    cv2.imwrite(os.path.join(execution_dir, 'synthetic_green_obstacle_2_image.jpg'), obstacle_2_image)
+    trajectory, waypoints_coordinates = get_trajectory(td_obstacle_2_summary, os.path.join(execution_dir, 'synthetic_green_obstacle_2_image.jpg'), start_waypoint_idx=5)
+    plot_trajectory(td_obstacle_2_summary, obstacle_2_image_path, trajectory, waypoints_coordinates, start_waypoint_idx=5,
+                    output_file_path=os.path.join(execution_dir, 'obstacle_2_trajectory.jpg'))
