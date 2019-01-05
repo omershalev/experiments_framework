@@ -81,7 +81,7 @@ def generate_scans_pickle(video_path, resolution, output_pickle_path):
     scans_and_ugv_poses = OrderedDict()
     prev_scan_time = None
     cap = cv2.VideoCapture(video_path)
-    if (cap.isOpened() == False):
+    if not cap.isOpened():
         raise Exception('Error opening video stream')
     frame_idx = 0
     frames_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
