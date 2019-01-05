@@ -30,6 +30,16 @@ def plot_2d_trajectory(dfs, labels=None, colors=None, file_name=None, show=False
         plt.show()
 
 
+def plot_line_with_sleeve(vector, sleeve_width, color):
+    upper_bound = vector + sleeve_width / 2
+    lower_bound = vector - sleeve_width / 2
+    color_string_to_char = {'red': 'r', 'green': 'g'}
+    plt.plot(vector, color_string_to_char[color])
+    plt.plot(upper_bound, '%s--' % color_string_to_char[color])
+    plt.plot(lower_bound, '%s--' % color_string_to_char[color])
+    plt.fill_between(vector.index, upper_bound, lower_bound, facecolor=color, alpha=0.2)
+
+
 def show_image(window_name, image, wait_key=True):
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(window_name, config.screen_resolution[0], config.screen_resolution[1])
