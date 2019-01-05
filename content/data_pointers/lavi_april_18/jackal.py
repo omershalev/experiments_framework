@@ -1,8 +1,8 @@
 import os
-from framework import config
+from content.data_pointers import lavi_april_18
 from framework.data_descriptor import DataDescriptor
 
-base_path = config.base_raw_data_path
+base_path = lavi_april_18.base_raw_data_path
 
 jackal_18 = {'15-09-35': DataDescriptor(os.path.join(base_path, 'jackal_18', '2018-04-24-15-09-35_0.bag'), 'short warm up'),
              '15-11-01': DataDescriptor(os.path.join(base_path, 'jackal_18', '2018-04-24-15-11-01_0.bag'), 'fork in rows 3-4, 4-5 and 5-6 ###############'),

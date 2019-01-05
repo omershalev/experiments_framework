@@ -1,9 +1,11 @@
 import os
-import framework.config as config
+from framework import config
+from content.data_pointers import lavi_november_18
 from framework.data_descriptor import DataDescriptor
 
-base_path = config.base_raw_data_path
-markers_locations_path = config.markers_locations_path
+base_path = lavi_november_18.base_raw_data_path
+markers_locations_path = lavi_november_18.markers_locations_path
+base_resources_path = lavi_november_18.base_resources_path
 
 plot1_snapshots_60_meters = {
                         '10-08-5': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0229.JPG'), '4 landmarks, 60 meters'),
@@ -74,20 +76,21 @@ plot1_snapshots_80_meters = {
                         '10-16-3': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0276.JPG'), '4 landmarks, 80 meters'),
                         '10-17-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0277.JPG'), '4 landmarks, 80 meters'),
 
-                        '10-26-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0282.JPG'), '4 landmarks, 80 meters'), # TODO: Vehicle starts here
-                        '10-26-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0283.JPG'), '4 landmarks, 80 meters'),
-                        '10-26-3': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0284.JPG'), '4 landmarks, 80 meters'),
-                        '10-27-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0285.JPG'), '4 landmarks, 80 meters'),
-                        '10-27-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0286.JPG'), '4 landmarks, 80 meters'),
-                        '10-28-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0287.JPG'), '4 landmarks, 80 meters'),
-                        '10-29-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0288.JPG'), '4 landmarks, 80 meters'),
-                        '10-29-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0289.JPG'), '4 landmarks, 80 meters'),
-                        '10-30-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0290.JPG'), '4 landmarks, 80 meters'),
-                        '10-30-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0291.JPG'), '4 landmarks, 80 meters'),
-                        '10-31-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0292.JPG'), '4 landmarks, 80 meters'),
-                        '10-32-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0293.JPG'), '4 landmarks, 80 meters'),
+                        '10-26-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0282.JPG'), '4 landmarks, 80 meters, with vehicle'),
+                        '10-26-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0283.JPG'), '4 landmarks, 80 meters, with vehicle'),
+                        '10-26-3': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0284.JPG'), '4 landmarks, 80 meters, with vehicle'),
+                        '10-27-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0285.JPG'), '4 landmarks, 80 meters, with vehicle'),
+                        '10-27-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0286.JPG'), '4 landmarks, 80 meters, with vehicle'),
+                        '10-28-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0287.JPG'), '4 landmarks, 80 meters, with vehicle'),
+                        '10-29-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0288.JPG'), '4 landmarks, 80 meters, with vehicle'),
+                        '10-29-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0289.JPG'), '4 landmarks, 80 meters, with vehicle'),
+                        '10-30-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0290.JPG'), '4 landmarks, 80 meters, with vehicle'),
+                        '10-30-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0291.JPG'), '4 landmarks, 80 meters, with vehicle'),
+                        '10-31-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0292.JPG'), '4 landmarks, 80 meters, with vehicle'),
+                        '10-32-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0293.JPG'), '4 landmarks, 80 meters, with vehicle'),
                     }
 plot1_snapshots_80_meters_markers_locations_json_path = os.path.join(markers_locations_path, 'plot1_snapshots_80_meters.json')
+plot1_snapshots_80_meters_ugv_poses = os.path.join(base_resources_path, 'ugv_poses', 'plot1_snapshots_80_meters_ugv_poses.json')
 
 plot2_snapshots_80_meters = {
                         '11-06-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0295.JPG'), '4 landmarks, 80 meters'),
