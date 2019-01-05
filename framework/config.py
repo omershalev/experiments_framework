@@ -1,19 +1,19 @@
 import os
 import numpy as np
 
-############################################# PATHS #############################################
+#################################################################################################
+#                                              ENV                                              #
+#################################################################################################
 root_dir_path = r'/home/omer/orchards_ws'
-base_raw_data_path = os.path.join(root_dir_path, 'resources/lavi_apr_18/raw')
-panorama_path = os.path.join(root_dir_path, 'resources/lavi_apr_18/panorama')
-markers_locations_path = os.path.join(root_dir_path, 'resources/lavi_apr_18/markers_locations')
 base_results_path = os.path.join(root_dir_path, 'results')
 temp_output_path = r'/home/omer/temp'
-
 output_to_console = True
-
 screen_resolution = (1920, 1080)
 
-##################################### BEST KNOWN PARAMETERS #####################################
+
+#################################################################################################
+#                                             PARAMS                                            #
+#################################################################################################
 bounding_box_expand_ratio = 0.15 # TODO: this was changed from 0.15 - is that okay?
 target_system_frequency = 30 # TODO: consider 25...
 top_view_resolution = 0.0125 # TODO: eventually, this should be removed
