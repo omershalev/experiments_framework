@@ -31,6 +31,9 @@ class Experiment(object):
     def prologue(self):
         pass
 
+    def epilogue(self):
+        pass
+
     def task(self, **kwargs):
         raise NotImplementedError
 
@@ -67,6 +70,7 @@ class Experiment(object):
                 if type(value) is np.ndarray:
                     return value.tolist()
                 return value
+            self.epilogue()
             params_to_dump = {key: make_serializable(value) for key, value in self.params.items()} if self.params is not None else None
             metadata_to_dump = {key: make_serializable(value) for key, value in self.metadata.items()} if self.metadata is not None else None
             results_to_dump = {key: make_serializable(value) for key, value in self.results.items()}
