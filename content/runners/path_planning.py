@@ -3,7 +3,6 @@ import json
 import cv2
 import numpy as np
 
-from computer_vision import calibration
 from framework import utils
 from framework import cv_utils
 from framework import config
