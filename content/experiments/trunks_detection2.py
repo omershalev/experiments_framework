@@ -106,26 +106,29 @@ class TrunksDetectionExperiment(Experiment):
         if viz_mode:
             viz_utils.show_image('gaussians filter', gaussians_filter)
             viz_utils.show_image('filter output', filter_output)
-        #
-        # # Optimize the grid
-        # optimized_grid, optimized_grid_args = trunks_detection.optimize_grid(grid_dim_x, grid_dim_y, translation, orientation, shear, sigma, cropped_image, n=self.params['grid_size_for_optimization'])
-        # optimized_grid_dim_x, optimized_grid_dim_y, optimized_translation_x, optimized_translation_y, optimized_orientation, optimized_shear, optimized_sigma = optimized_grid_args
-        # self.results[self.repetition_id] = {'optimized_grid_dim_x': optimized_grid_dim_x,
-        #                                     'optimized_grid_dim_y': optimized_grid_dim_y,
-        #                                     'optimized_translation_x': optimized_translation_x,
-        #                                     'optimized_translation_y': optimized_translation_y,
-        #                                     'optimized_orientation': optimized_orientation,
-        #                                     'optimized_shear': optimized_shear,
-        #                                     'optimized_sigma': optimized_sigma}
-        # optimized_grid_image = cv_utils.draw_points_on_image(cropped_image, optimized_grid, color=(0, 255, 0))
-        # optimized_grid_image = cv_utils.draw_points_on_image(optimized_grid_image, positioned_grid, color=(255, 0, 0))
-        # cv2.imwrite(os.path.join(self.repetition_dir, 'optimized_grid.jpg'), optimized_grid_image)
-        # if viz_mode:
-        #     viz_utils.show_image('optimized grid', optimized_grid_image)
+
+        # Optimize the squared grid
+        optimized_grid, optimized_grid_args, optimization_steps = trunks_detection2.optimize_grid(grid_dim_x, grid_dim_y, translation, orientation, shear, sigma,
+                                                                                                  cropped_image, pattern=np.ones([6,6])) # TODO: take 6 out as a parameter
+        optimized_grid_dim_x, optimized_grid_dim_y, optimized_translation_x, optimized_translation_y, optimized_orientation, optimized_shear, optimized_sigma = optimized_grid_args
+        self.results[self.repetition_id] = {'optimized_grid_dim_x': optimized_grid_dim_x,
+                                            'optimized_grid_dim_y': optimized_grid_dim_y,
+                                            'optimized_translation_x': optimized_translation_x,
+                                            'optimized_translation_y': optimized_translation_y,
+                                            'optimized_orientation': optimized_orientation,
+                                            'optimized_shear': optimized_shear,
+                                            'optimized_sigma': optimized_sigma}
+        optimized_grid_image = cv_utils.draw_points_on_image(cropped_image, optimized_grid, color=(0, 255, 0))
+        optimized_grid_image = cv_utils.draw_points_on_image(optimized_grid_image, positioned_grid, color=(255, 0, 0))
+        cv2.imwrite(os.path.join(self.repetition_dir, 'optimized_grid_1111.jpg'), optimized_grid_image)
+        if viz_mode:
+            viz_utils.show_image('optimized grid_1111', optimized_grid_image)
+
+
 
         # Extrapolate full grid on the entire image
-        full_grid_np = trunks_detection2.extrapolate_full_grid(grid_dim_x, grid_dim_y, orientation, shear,
-                                                           base_grid_origin=np.array(grid[0]) + np.array(crop_origin),
+        full_grid_np = trunks_detection2.extrapolate_full_grid(optimized_grid_dim_x, optimized_grid_dim_y, optimized_orientation, optimized_shear,
+                                                           base_grid_origin=np.array(optimized_grid[0]) + np.array(crop_origin),
                                                            image_width=image.shape[1], image_height=image.shape[0])
         full_grid_image = cv_utils.draw_points_on_image(image, [elem for elem in full_grid_np.flatten() if type(elem) is tuple], color=(255, 0, 0))
         cv2.imwrite(os.path.join(self.repetition_dir, 'full_grid.jpg'), full_grid_image)
@@ -159,31 +162,33 @@ class TrunksDetectionExperiment(Experiment):
             viz_utils.show_image('semantic trunks', semantic_trunks_image)
 
 
-        ####### TEMP ########
+
+
+        ####### TEMP ######## TODO: remove
         # trunks_score = trunks_detection2._trunks_grid_score(segmentation.extract_canopy_contours(image)[1], trunk_points_list.tolist(), sigma)
         ####### E/OTEMP ########
 
 
 
         # Optimize the grid
-        grid_origin = full_grid_np[pattern_origin] # TODO: verify coordinates order
-        optimized_grid, optimized_grid_args, optimization_steps = trunks_detection2.optimize_grid(grid_dim_x, grid_dim_y, grid_origin, orientation, shear, sigma, image, orchard_pattern_np)
-        optimized_grid_dim_x, optimized_grid_dim_y, optimized_translation_x, optimized_translation_y, optimized_orientation, optimized_shear, optimized_sigma = optimized_grid_args
-        self.results[self.repetition_id] = {'optimized_grid_dim_x': optimized_grid_dim_x,
-                                            'optimized_grid_dim_y': optimized_grid_dim_y,
-                                            'optimized_translation_x': optimized_translation_x,
-                                            'optimized_translation_y': optimized_translation_y,
-                                            'optimized_orientation': optimized_orientation,
-                                            'optimized_shear': optimized_shear,
-                                            'optimized_sigma': optimized_sigma}
-        optimized_grid_image = cv_utils.draw_points_on_image(image, optimized_grid, color=(0, 255, 0))
-        # optimized_grid_image = cv_utils.draw_points_on_image(optimized_grid_image, positioned_grid, color=(255, 0, 0))
-        cv2.imwrite(os.path.join(self.repetition_dir, 'optimized_grid.jpg'), optimized_grid_image)
-        for idx, step in enumerate(optimization_steps):
-            step_grid_image = cv_utils.draw_points_on_image(image, step[0], color=(0, 255, 0))
-            cv2.imwrite(os.path.join(self.repetition_dir, 'step_%d_grid_score=%f.jpg' % (idx, step[1])), step_grid_image)
-        if viz_mode:
-            viz_utils.show_image('optimized grid', optimized_grid_image)
+        # grid_origin = full_grid_np[pattern_origin] # TODO: verify coordinates order
+        # optimized_grid, optimized_grid_args, optimization_steps = trunks_detection2.optimize_grid(grid_dim_x, grid_dim_y, grid_origin, orientation, shear, sigma, image, orchard_pattern_np)
+        # optimized_grid_dim_x, optimized_grid_dim_y, optimized_translation_x, optimized_translation_y, optimized_orientation, optimized_shear, optimized_sigma = optimized_grid_args
+        # self.results[self.repetition_id] = {'optimized_grid_dim_x': optimized_grid_dim_x,
+        #                                     'optimized_grid_dim_y': optimized_grid_dim_y,
+        #                                     'optimized_translation_x': optimized_translation_x,
+        #                                     'optimized_translation_y': optimized_translation_y,
+        #                                     'optimized_orientation': optimized_orientation,
+        #                                     'optimized_shear': optimized_shear,
+        #                                     'optimized_sigma': optimized_sigma}
+        # optimized_grid_image = cv_utils.draw_points_on_image(image, optimized_grid, color=(0, 255, 0))
+        # # optimized_grid_image = cv_utils.draw_points_on_image(optimized_grid_image, positioned_grid, color=(255, 0, 0))
+        # cv2.imwrite(os.path.join(self.repetition_dir, 'optimized_grid.jpg'), optimized_grid_image)
+        # for idx, step in enumerate(optimization_steps):
+        #     step_grid_image = cv_utils.draw_points_on_image(image, step[0], color=(0, 255, 0))
+        #     cv2.imwrite(os.path.join(self.repetition_dir, 'step_%d_grid_score=%f.jpg' % (idx, step[1])), step_grid_image)
+        # if viz_mode:
+        #     viz_utils.show_image('optimized grid', optimized_grid_image)
 
         # # Refine trunk locations
         # refined_trunk_coordinates_np = trunks_detection.refine_trunk_locations(image, trunk_coordinates_np, optimized_sigma,
