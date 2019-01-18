@@ -6,8 +6,7 @@ from framework import viz_utils
 from framework import cv_utils
 from content.data_pointers.lavi_april_18 import dji
 from computer_vision import segmentation
-from computer_vision import trunks_detection
-from skimage.measure import compare_ssim
+from content.leftovers import trunks_detection_old_cv
 
 viz_mode = True
 
@@ -36,8 +35,8 @@ if __name__ == '__main__':
     if viz_mode:
         viz_utils.show_image('cropped image', cropped_image)
 
-    gaussians = trunks_detection.get_gaussians_grid_image(trunks, optimized_sigma, cropped_image.shape[1], cropped_image.shape[0], scale_factor=0.7,
-                                                          square_size_to_sigma_ratio=3, circle_radius_to_sigma_ratio=3)
+    gaussians = trunks_detection_old_cv.get_gaussians_grid_image(trunks, optimized_sigma, cropped_image.shape[1], cropped_image.shape[0], scale_factor=0.7,
+                                                                 square_size_to_sigma_ratio=3, circle_radius_to_sigma_ratio=3)
     if viz_mode:
         viz_utils.show_image('gaussians', gaussians)
 

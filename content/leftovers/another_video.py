@@ -12,9 +12,8 @@ from geometry_msgs.msg import PointStamped
 from content.data_pointers.lavi_april_18.jackal import jackal_18 as ugv_data
 from content.data_pointers.lavi_april_18 import orchard_topology
 from framework import config
-from framework import cv_utils
 from computer_vision import segmentation
-from computer_vision import trunks_detection
+from content.leftovers import trunks_detection_old_cv
 from computer_vision import maps_generation
 from computer_vision import calibration
 from computer_vision.contours_scan_cython import contours_scan
@@ -122,15 +121,6 @@ def get_image_from_video(video_path, time_in_msec):
     return None
 
 
-def mark_dimensions(video_path, output_pickle_path):
-    points_sets = []
-    for t in np.linspace(start=20, stop=600, num=10):
-        image = get_image_from_video(video_path, time_in_msec=t * 1e3)
-        points_sets.append(cv_utils.sample_pixel_coordinates(image, multiple=True))
-    with open(output_pickle_path, 'wb') as f:
-        pickle.dump(points_sets, f)
-
-
 def sample_video(video_path, output_path, start_time, stop_time, samples):
     for t in np.linspace(start_time, stop_time, samples):
         image = get_image_from_video(video_path, time_in_msec=t * 1e3)
@@ -141,31 +131,15 @@ def estimate_resolution(images_dir):
     grid_dim_y_values = []
     for image_filename in os.listdir(images_dir):
         image = cv2.imread(os.path.join(images_dir, image_filename))
-        orientation = trunks_detection.estimate_rows_orientation(image)
-        _, rotated_centroids, _, _ = trunks_detection.find_tree_centroids(image, correction_angle=orientation * (-1))
-        grid_dim_x, grid_dim_y = trunks_detection.estimate_grid_dimensions(rotated_centroids)
+        orientation = trunks_detection_old_cv.estimate_rows_orientation(image)
+        _, rotated_centroids, _, _ = trunks_detection_old_cv.find_tree_centroids(image, correction_angle=orientation * (-1))
+        grid_dim_x, grid_dim_y = trunks_detection_old_cv.estimate_grid_dimensions(rotated_centroids)
         grid_dim_x_values.append(grid_dim_x)
         grid_dim_y_values.append(grid_dim_y)
     return 1.0 / calibration.calculate_pixel_to_meter(np.mean(grid_dim_x_values), np.mean(grid_dim_y_values),
                                                       orchard_topology.measured_row_widths,
                                                       orchard_topology.measured_intra_row_distances)
 
-
-# def estimate_resolution(points_pickle_path):
-#     with open(points_pickle_path) as f:
-#         points_sets = pickle.load(f)
-#     dim_x = []
-#     dim_y = []
-#     for set in points_sets:
-#         if len(set) == 0:
-#             continue
-#         dim_x.append(abs(set[1][0] - set[2][0]))
-#         dim_y.append(abs(set[0][1] - set[1][1]))
-#         # dim_x.append(abs(set[1][1] - set[2][1]))
-#         # dim_y.append(abs(set[0][0] - set[1][0]))
-#     mean_dim_x = np.mean(dim_x)
-#     mean_dim_y = np.mean(dim_y)
-#     return 1.0 / calibration.calculate_pixel_to_meter(mean_dim_x, mean_dim_y, orchard_topology.measured_row_widths, orchard_topology.measured_intra_row_distances)
 
 if __name__ == '__main__':
     ugv_bag_path = ugv_data['17-45-36'].path
@@ -175,8 +149,8 @@ if __name__ == '__main__':
     points_pickle_path = r'/home/omer/Downloads/points.pkl'
     video_samples_path = r'/home/omer/Downloads/video_samples'
 
-    # generate_odometry_pickle(ugv_bag_path ,odometry_pickle_path)
-    # sample_video(video_path, video_samples_path, start_time=20, stop_time=600, samples=50)
+    generate_odometry_pickle(ugv_bag_path ,odometry_pickle_path)
+    sample_video(video_path, video_samples_path, start_time=20, stop_time=600, samples=50)
     resolution = estimate_resolution(video_samples_path)
     generate_scans_pickle(video_path, scans_and_ugv_poses_pickle_path, resolution)
 
@@ -186,5 +160,3 @@ The DJI begins movement on second 3 in the video
 ==> 120 delay 
 '''
 
-# mark_dimensions(video_path, points_pickle_path)
-# print estimate_resolution(points_pickle_path)

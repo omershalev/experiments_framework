@@ -3,6 +3,8 @@ import cv2
 import rospy
 import rosbag
 
+# TODO: this module perhaps could be removed (related to AMCL video)!!!!!
+
 from computer_vision import segmentation
 from computer_vision import maps_generation
 from computer_vision import object_tracking

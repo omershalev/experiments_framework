@@ -7,25 +7,12 @@ from framework import config
 if __name__ == '__main__':
 
     ros_utils.start_master(use_sim_time=False)
-    ros_utils.launch_rviz(os.path.join(config.root_dir_path, 'astar/experiments_framework/framework/amcl.rviz'))
+    ros_utils.launch_rviz(os.path.join(config.root_dir_path, 'src/experiments_framework/framework/amcl.rviz'))
 
     # Launch base_link to contours_scan_link static TF
     ros_utils.launch(package='localization',
                      launch_file='static_identity_tf.launch',
                      argv={'frame_id': 'base_link', 'child_frame_id': 'contours_scan_link'})
-
-    # Launch synthetic scan generator
-    ros_utils.launch(package='localization',
-                     launch_file='synthetic_scan_generator.launch',
-                     argv={'virtual_ugv_mode': False,
-                           'min_angle': config.synthetic_scan_min_angle,
-                           'max_angle': config.synthetic_scan_max_angle,
-                           'samples_num': config.synthetic_scan_samples_num,
-                           'min_distance': config.synthetic_scan_min_distance,
-                           'max_distance': config.synthetic_scan_max_distance,
-                           'resolution': 0.008, # TODO: choose this one more wisely
-                           'r_primary_search_samples': 25,  # TODO: read from config
-                           'r_secondary_search_step': 3})  # TODO: read from config
 
     # Launch map server
     ros_utils.launch(package='localization',

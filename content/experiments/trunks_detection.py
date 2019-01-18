@@ -21,6 +21,7 @@ class TrunksDetectionExperiment(Experiment):
     def task(self, **kwargs):
 
         viz_mode = kwargs.get('viz_mode')
+
         # Read image
         image = cv2.imread(self.data_sources)
         cv2.imwrite(os.path.join(self.repetition_dir, 'image.jpg'), image)
@@ -76,7 +77,7 @@ class TrunksDetectionExperiment(Experiment):
         essential_grid_shape = np.max(essential_grid, axis=0) - np.min(essential_grid, axis=0)
         margin = essential_grid_shape * 0.2
         essential_grid_shifted = [tuple(elem) for elem in np.array(essential_grid) - np.min(essential_grid, axis=0) + margin / 2]
-        estimated_grid_image = np.full((int(essential_grid_shape[1] + margin[1]), int(essential_grid_shape[0] + margin[0]), 3), 0, dtype=np.uint8)
+        estimated_grid_image = np.full((int(essential_grid_shape[1] + margin[1]), int(essential_grid_shape[0] + margin[0]), 3), 255, dtype=np.uint8)
         estimated_grid_image = cv_utils.draw_points_on_image(estimated_grid_image, essential_grid_shifted, color=(255, 0, 0))
         cv2.imwrite(os.path.join(self.repetition_dir, 'estimated_grid.jpg'), estimated_grid_image)
         if viz_mode:
@@ -100,15 +101,16 @@ class TrunksDetectionExperiment(Experiment):
         grid = trunks_detection.get_grid(grid_dim_x, grid_dim_y, translation, orientation, shear, n=self.params['grid_size_for_optimization'])
         gaussians_filter = trunks_detection.get_gaussians_grid_image(grid, sigma, cropped_image.shape[1], cropped_image.shape[0])
         cv2.imwrite(os.path.join(self.repetition_dir, 'gaussians_filter.jpg'), 255.0 * gaussians_filter)
-        _, contours_mask = segmentation.extract_canopy_contours(cropped_image)
-        filter_output = np.multiply(gaussians_filter, contours_mask)
+        _, cropped_contours_mask = segmentation.extract_canopy_contours(cropped_image)
+        filter_output = np.multiply(gaussians_filter, cropped_contours_mask)
         cv2.imwrite(os.path.join(self.repetition_dir, 'filter_output.jpg'), filter_output)
         if viz_mode:
             viz_utils.show_image('gaussians filter', gaussians_filter)
             viz_utils.show_image('filter output', filter_output)
 
-        # Optimize the grid
-        optimized_grid, optimized_grid_args = trunks_detection.optimize_grid(grid_dim_x, grid_dim_y, translation, orientation, shear, sigma, cropped_image, n=self.params['grid_size_for_optimization'])
+        # Optimize the squared grid
+        optimized_grid, optimized_grid_args, optimization_steps = trunks_detection.optimize_grid(grid_dim_x, grid_dim_y, translation, orientation, shear, sigma,
+                                                                                                 cropped_image, pattern=np.ones([6,6])) # TODO: take 6 out as a parameter
         optimized_grid_dim_x, optimized_grid_dim_y, optimized_translation_x, optimized_translation_y, optimized_orientation, optimized_shear, optimized_sigma = optimized_grid_args
         self.results[self.repetition_id] = {'optimized_grid_dim_x': optimized_grid_dim_x,
                                             'optimized_grid_dim_y': optimized_grid_dim_y,
@@ -119,40 +121,53 @@ class TrunksDetectionExperiment(Experiment):
                                             'optimized_sigma': optimized_sigma}
         optimized_grid_image = cv_utils.draw_points_on_image(cropped_image, optimized_grid, color=(0, 255, 0))
         optimized_grid_image = cv_utils.draw_points_on_image(optimized_grid_image, positioned_grid, color=(255, 0, 0))
-        cv2.imwrite(os.path.join(self.repetition_dir, 'optimized_grid.jpg'), optimized_grid_image)
+        cv2.imwrite(os.path.join(self.repetition_dir, 'optimized_square_grid.jpg'), optimized_grid_image)
+        if kwargs.get('verbose_optimization'):
+            self.results[self.repetition_id]['optimization_steps_scores'] = {}
+            for step_idx, (step_grid, step_score, step_sigma) in enumerate(optimization_steps):
+                self.results[self.repetition_id]['optimization_steps_scores'][step_idx] = step_score
+                step_image = cropped_image.copy()
+                step_gaussians_filter = trunks_detection.get_gaussians_grid_image(step_grid, step_sigma, cropped_image.shape[1], cropped_image.shape[0])
+                step_gaussians_filter = cv2.cvtColor((255.0 * step_gaussians_filter).astype(np.uint8), cv2.COLOR_GRAY2BGR)
+                alpha = 0.5
+                weighted = cv2.addWeighted(step_image, alpha, step_gaussians_filter, 1 - alpha, gamma=0)
+                update_indices = np.where(step_gaussians_filter != 0)
+                step_image[update_indices] = weighted[update_indices]
+                step_image = cv_utils.draw_points_on_image(step_image, step_grid, color=(0, 255, 0))
+                cv2.imwrite(os.path.join(self.repetition_dir, 'optimization_step_%d_[%.2f].jpg' % (step_idx, step_score)), step_image)
         if viz_mode:
-            viz_utils.show_image('optimized grid', optimized_grid_image)
+            viz_utils.show_image('optimized square grid', optimized_grid_image)
 
         # Extrapolate full grid on the entire image
         full_grid_np = trunks_detection.extrapolate_full_grid(optimized_grid_dim_x, optimized_grid_dim_y, optimized_orientation, optimized_shear,
-                                                           base_grid_origin=np.array(optimized_grid[0]) + np.array(crop_origin),
-                                                           image_width=image.shape[1], image_height=image.shape[0])
-        full_grid_image = cv_utils.draw_points_on_image(image, [elem for elem in full_grid_np.flatten() if type(elem) is tuple], color=(255, 0, 0))
+                                                              base_grid_origin=np.array(optimized_grid[0]) + np.array(crop_origin),
+                                                              image_width=image.shape[1], image_height=image.shape[0])
+        full_grid_image = cv_utils.draw_points_on_image(image, [elem for elem in full_grid_np.flatten() if type(elem) is tuple], color=(0, 255, 0))
         cv2.imwrite(os.path.join(self.repetition_dir, 'full_grid.jpg'), full_grid_image)
         if viz_mode:
             viz_utils.show_image('full grid', full_grid_image)
 
-
         # Match given orchard pattern to grid
-        full_grid_scores_np = trunks_detection.get_grid_scores_array(full_grid_np, image, optimized_sigma)
+        full_grid_scores_np = trunks_detection.get_grid_scores_array(full_grid_np, image, sigma)
         orchard_pattern_np = self.params['orchard_pattern']
-        pattern_origin, pattern_match_score = trunks_detection.fit_pattern_on_grid(full_grid_scores_np, orchard_pattern_np)
+        pattern_origin, _ = trunks_detection.fit_pattern_on_grid(full_grid_scores_np, orchard_pattern_np)
         if pattern_origin is None:
             raise ExperimentFailure
-        self.results[self.repetition_id]['pattern_match_score'] = pattern_match_score
         trunk_coordinates_np = full_grid_np[pattern_origin[0] : pattern_origin[0] + orchard_pattern_np.shape[0],
                                             pattern_origin[1] : pattern_origin[1] + orchard_pattern_np.shape[1]]
-        trunk_points_list = trunk_coordinates_np[orchard_pattern_np != -1]
-        trunk_coordinates_np[orchard_pattern_np == -1] = np.nan
+        trunk_points_list = trunk_coordinates_np[orchard_pattern_np == 1]
+        trunk_coordinates_orig_np = trunk_coordinates_np.copy()
+        trunk_coordinates_np[orchard_pattern_np != 1] = np.nan
         semantic_trunks_image = cv_utils.draw_points_on_image(image, trunk_points_list, color=(255, 255, 255))
         for i in range(trunk_coordinates_np.shape[0]):
             for j in range(trunk_coordinates_np.shape[1]):
                 if np.any(np.isnan(trunk_coordinates_np[(i, j)])):
                     continue
-                label_coordinates = (int(trunk_coordinates_np[(i, j)][0]) + 15, int(trunk_coordinates_np[(i, j)][1]) + 15)
+                trunk_coordinates = (int(trunk_coordinates_np[(i, j)][0]), int(trunk_coordinates_np[(i, j)][1]))
                 tree_label = '%d/%s' % (j + 1, chr(65 + (trunk_coordinates_np.shape[0] - 1 - i)))
-                cv2.putText(semantic_trunks_image, tree_label, label_coordinates, fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                            fontScale=2, color=(255, 255, 255), thickness=8, lineType=cv2.LINE_AA)
+                semantic_trunks_image = cv_utils.put_shaded_text_on_image(semantic_trunks_image, tree_label, trunk_coordinates,
+                                                                                  color=(255, 255, 255), offset=(15, 15))
+
         cv2.imwrite(os.path.join(self.repetition_dir, 'semantic_trunks.jpg'), semantic_trunks_image)
         if viz_mode:
             viz_utils.show_image('semantic trunks', semantic_trunks_image)
@@ -160,8 +175,10 @@ class TrunksDetectionExperiment(Experiment):
         # Refine trunk locations
         refined_trunk_coordinates_np = trunks_detection.refine_trunk_locations(image, trunk_coordinates_np, optimized_sigma,
                                                                                optimized_grid_dim_x, optimized_grid_dim_x)
-        refined_trunk_points_list = refined_trunk_coordinates_np[orchard_pattern_np != -1]
-        refined_trunk_coordinates_np[orchard_pattern_np == -1] = np.nan
+        confidence = trunks_detection.get_trees_confidence(contours_mask, refined_trunk_coordinates_np[orchard_pattern_np == 1],
+                                                           trunk_coordinates_orig_np[orchard_pattern_np == -1], optimized_sigma)
+        refined_trunk_points_list = refined_trunk_coordinates_np[orchard_pattern_np == 1]
+        refined_trunk_coordinates_np[orchard_pattern_np != 1] = np.nan
         refined_semantic_trunks_image = cv_utils.draw_points_on_image(image, refined_trunk_points_list, color=(255, 255, 255))
         semantic_trunks = {}
         for i in range(refined_trunk_coordinates_np.shape[0]):
@@ -169,12 +186,15 @@ class TrunksDetectionExperiment(Experiment):
                 if np.any(np.isnan(refined_trunk_coordinates_np[(i, j)])):
                     continue
                 trunk_coordinates = (int(refined_trunk_coordinates_np[(i, j)][0]), int(refined_trunk_coordinates_np[(i, j)][1]))
-                label_coordinates = tuple(np.array(trunk_coordinates) + np.array([15, 15]))
                 semantic_trunks['%d/%s' % (j + 1, chr(65 + (trunk_coordinates_np.shape[0] - 1 - i)))] = trunk_coordinates
                 tree_label = '%d/%s' % (j + 1, chr(65 + (refined_trunk_coordinates_np.shape[0] - 1 - i)))
-                cv2.putText(refined_semantic_trunks_image, tree_label, label_coordinates, fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                            fontScale=2, color=(255, 255, 255), thickness=8, lineType=cv2.LINE_AA)
-        cv2.imwrite(os.path.join(self.repetition_dir, 'refined_semantic_trunks.jpg'), refined_semantic_trunks_image)
+                refined_semantic_trunks_image = cv_utils.put_shaded_text_on_image(refined_semantic_trunks_image, tree_label, trunk_coordinates,
+                                                                                  color=(255, 255, 255), offset=(15, 15))
+        tree_scores_stats = trunks_detection.get_tree_scores_stats(contours_mask, trunk_points_list, optimized_sigma)
         self.results[self.repetition_id]['semantic_trunks'] = semantic_trunks
+        self.results[self.repetition_id]['tree_scores_stats'] = tree_scores_stats
+        self.results[self.repetition_id]['confidence'] = confidence
+        cv2.imwrite(os.path.join(self.repetition_dir, 'refined_semantic_trunks[%.2f].jpg' % confidence), refined_semantic_trunks_image)
         if viz_mode:
             viz_utils.show_image('refined semantic trunks', refined_semantic_trunks_image)
+
