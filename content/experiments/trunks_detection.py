@@ -109,8 +109,11 @@ class TrunksDetectionExperiment(Experiment):
             viz_utils.show_image('filter output', filter_output)
 
         # Optimize the squared grid
-        optimized_grid, optimized_grid_args, optimization_steps = trunks_detection.optimize_grid(grid_dim_x, grid_dim_y, translation, orientation, shear, sigma,
-                                                                                                 cropped_image, pattern=np.ones([6,6])) # TODO: take 6 out as a parameter
+        optimized_grid, optimized_grid_args, optimization_steps = trunks_detection.optimize_grid(grid_dim_x, grid_dim_y,
+                                                                                                 translation, orientation,
+                                                                                                 shear, sigma,
+                                                                                                 cropped_image,
+                                                                                                 pattern=np.ones([self.params['grid_size_for_optimization'],self.params['grid_size_for_optimization']]))
         optimized_grid_dim_x, optimized_grid_dim_y, optimized_translation_x, optimized_translation_y, optimized_orientation, optimized_shear, optimized_sigma = optimized_grid_args
         self.results[self.repetition_id] = {'optimized_grid_dim_x': optimized_grid_dim_x,
                                             'optimized_grid_dim_y': optimized_grid_dim_y,
