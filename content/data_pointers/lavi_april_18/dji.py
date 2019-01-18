@@ -64,8 +64,4 @@ snapshots_80_meters = {
 snapshots_80_meters_markers_locations_json_path = os.path.join(markers_locations_path, 'snapshots_80_meters.json')
 
 trunks_detection_results_dir = os.path.join(config.base_results_path, 'trunks_detection')
-# selected_trunks_detection_experiments_and_repetitions = [#('20180922-234018_trunks detection on 15-08-2_temp', 1), # TODO: remove
-#                                                          ('20180924-190957_trunks_detection_on_15-08-2', 2),
-#                                                          ('20180926-034744_trunks_detection_on_19-04-4', 1),
-#                                                          ('20180924-193305_trunks_detection_on_15-08-1', 1)]
 selected_trunks_detection_experiments = ['manual_apr_15-08-1', 'manual_apr_15-17-1', 'manual_apr_15-18-3', 'manual_apr_15-19-1', 'manual_apr_15-53-1', 'manual_apr_16-55-1', 'manual_apr_19-04-1']
