@@ -103,7 +103,6 @@ plot2_snapshots_80_meters = {
                         '11-07-7': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0302.JPG'), '4 landmarks, 80 meters'),
                         '11-07-8': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0303.JPG'), '4 landmarks, 80 meters'),
                         '11-07-9': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0304.JPG'), '4 landmarks, 80 meters'),
-                        '11-07-10': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0308.JPG'), '4 landmarks, 80 meters'),
                         '11-07-11': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0309.JPG'), '4 landmarks, 80 meters'),
                         '11-07-12': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0310.JPG'), '4 landmarks, 80 meters'),
                         '11-07-13': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0311.JPG'), '4 landmarks, 80 meters'),
