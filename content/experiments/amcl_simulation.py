@@ -92,6 +92,10 @@ class AmclSimulationExperiment(Experiment):
             return np.linalg.norm(np.array(covariance_mat).reshape(6, 6))
         amcl_covariance_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/%s/amcl_pose' % namespace, fields=['pose.covariance'], aggregation=covariance_norm)
         amcl_covariance_df.columns = ['amcl_covariance_norm[%d]' % (self.repetition_id)]
+        ground_truth_df = ground_truth_df[~ground_truth_df.index.duplicated(keep='first')] # TODO: new logic, suspect it!
+        amcl_pose_df = amcl_pose_df[~amcl_pose_df.index.duplicated(keep='first')] # TODO: new logic, suspect it!
+        amcl_covariance_df = amcl_covariance_df[~amcl_covariance_df.index.duplicated(keep='first')] # TODO: new logic, suspect it!
+
         amcl_results_df = pd.concat([ground_truth_df, amcl_pose_df, amcl_covariance_df], axis=1)
         amcl_results_df['ground_truth_x[%d]' % self.repetition_id] = amcl_results_df['ground_truth_x[%d]' % self.repetition_id].interpolate()  # TODO: try method='time'
         amcl_results_df['ground_truth_y[%d]' % self.repetition_id] = amcl_results_df['ground_truth_y[%d]' % self.repetition_id].interpolate()  # TODO: try method='time'
@@ -276,7 +280,6 @@ class AmclSimulationExperiment(Experiment):
 
         # Start recording output bag
         output_bag_path = os.path.join(self.repetition_dir, '%s_output.bag' % self.name)
-        self.results[self.repetition_id]['output_bag_path'] = output_bag_path
         ros_utils.start_recording_bag(output_bag_path, ['/ugv_pose', '/canopies/amcl_pose', '/canopies/particlecloud',
                                                         '/trunks/amcl_pose', '/trunks/particlecloud']) # TODO: exceptions are thrown!!!
 
@@ -294,3 +297,6 @@ class AmclSimulationExperiment(Experiment):
         # Generate results dafaframes
         self._generate_results_dataframe(namespace='canopies', output_bag_path=output_bag_path, image_height=self.canopies_localization_image_height)
         self._generate_results_dataframe(namespace='trunks', output_bag_path=output_bag_path, image_height=self.trunks_localization_image_height)
+
+        # Delete bag file
+        os.remove(output_bag_path)

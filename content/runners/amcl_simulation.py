@@ -1,8 +1,6 @@
 import os
 import json
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 from collections import namedtuple
 from itertools import combinations
 
@@ -72,17 +70,19 @@ def min_amcl_particles_configs_factory():
 #################################################################################################
 #                                             CONFIG                                            #
 #################################################################################################
-description = 'amcl_simulation_graphs_check'
-repetitions = 3
+description = 'amcl_simulation_particles_number'
+repetitions = 10
 two_snapshot = False
-experiment_configs_list = [ExperimentConfig(odometry_noise_mu_x=0,
-                                            odometry_noise_mu_y=0,
-                                            odometry_noise_sigma_x=0,
-                                            odometry_noise_sigma_y=0,
-                                            scan_noise_sigma=0,
-                                            min_amcl_particles=2500)]
-only_one = True
-setup = 'apr' # apr / nov1 / nov2 / nov3 / nov4
+# experiment_configs_list = [ExperimentConfig(odometry_noise_mu_x=0,
+#                                             odometry_noise_mu_y=0,
+#                                             odometry_noise_sigma_x=0,
+#                                             odometry_noise_sigma_y=0,
+#                                             scan_noise_sigma=0,
+#                                             min_amcl_particles=2500)]
+experiment_configs_list = min_amcl_particles_configs_factory() + scan_noise_configs_factory() + odometry_skid_xy_configs_factory() + odometry_skid_x_configs_factory()
+first_sample_only = True
+first_trajectory_only = True
+setup = 'apr' # apr / nov1 / nov2
 #################################################################################################
 
 if setup == 'apr':
@@ -92,10 +92,6 @@ if setup == 'apr':
 elif setup == 'nov1':
     raise NotImplementedError # TODO: implement
 elif setup == 'nov2':
-    raise NotImplementedError # TODO: implement
-elif setup == 'nov3':
-    raise NotImplementedError # TODO: implement
-elif setup == 'nov4':
     raise NotImplementedError # TODO: implement
 
 
@@ -113,11 +109,11 @@ if __name__ == '__main__':
         with open (os.path.join(td_results_dir, td_experiment_name_for_localization, 'experiment_summary.json')) as f:
             td_summary_for_localization = json.load(f)
 
-        optimized_sigma = td_summary_for_localization['results']['0']['optimized_sigma']
-        optimized_grid_dim_x_for_map = td_summary_for_map['results']['0']['optimized_grid_dim_x']
-        optimized_grid_dim_y_for_map = td_summary_for_map['results']['0']['optimized_grid_dim_y']
-        optimized_grid_dim_x_for_localization = td_summary_for_map['results']['0']['optimized_grid_dim_x']
-        optimized_grid_dim_y_for_localization = td_summary_for_map['results']['0']['optimized_grid_dim_y']
+        optimized_sigma = td_summary_for_localization['results']['1']['optimized_sigma']
+        optimized_grid_dim_x_for_map = td_summary_for_map['results']['1']['optimized_grid_dim_x']
+        optimized_grid_dim_y_for_map = td_summary_for_map['results']['1']['optimized_grid_dim_y']
+        optimized_grid_dim_x_for_localization = td_summary_for_map['results']['1']['optimized_grid_dim_x']
+        optimized_grid_dim_y_for_localization = td_summary_for_map['results']['1']['optimized_grid_dim_y']
         mean_trunk_radius, std_trunk_radius = calibration.calculate_trunk_radius_in_meters(orchard_topology.measured_trunks_perimeters)
         pixel_to_meter_ratio_for_map = calibration.calculate_pixel_to_meter(optimized_grid_dim_x_for_map, optimized_grid_dim_y_for_map,
                                                                             orchard_topology.measured_row_widths, orchard_topology.measured_intra_row_distances)
@@ -129,10 +125,10 @@ if __name__ == '__main__':
         std_trunk_radius_in_pixels_for_localization = std_trunk_radius * config.trunk_std_increasing_factor * pixel_to_meter_ratio_for_localization
         map_image_path = td_summary_for_map['data_sources']
         map_image_key = td_summary_for_map['metadata']['image_key']
-        map_semantic_trunks = td_summary_for_map['results']['0']['semantic_trunks']
+        map_semantic_trunks = td_summary_for_map['results']['1']['semantic_trunks']
         localization_image_path = td_summary_for_localization['data_sources']
         localization_image_key = td_summary_for_localization['metadata']['image_key']
-        localization_semantic_trunks = td_summary_for_localization['results']['0']['semantic_trunks']
+        localization_semantic_trunks = td_summary_for_localization['results']['1']['semantic_trunks']
 
         for experiment_config in experiment_configs_list:
             for trajectory_name in orchard_topology.trajectories.keys():
@@ -171,6 +167,7 @@ if __name__ == '__main__':
                                                                 'trajectory_name': trajectory_name},
                                                       working_dir=execution_dir)
                 experiment.run(repetitions, launch_rviz=True)
-
-        if only_one:
+                if first_trajectory_only:
+                    break
+        if first_sample_only:
             break
