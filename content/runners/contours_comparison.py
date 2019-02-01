@@ -7,17 +7,16 @@ from framework import utils
 from framework import cv_utils
 from computer_vision import segmentation
 
+from content.data_pointers.lavi_april_18.dji import trunks_detection_results_dir as apr_td_results_dir
+from content.data_pointers.lavi_november_18.dji import trunks_detection_results_dir as nov_td_results_dir
 
 #################################################################################################
 #                                             CONFIG                                            #
 #################################################################################################
 apr_selected_td_experiments = {'noon': 'trunks_detection_on_apr_15-08-1', 'late_noon': 'trunks_detection_on_apr_15-53-1',
-                  'afternoon': 'trunks_detection_on_apr_16-55-1', 'late_afternoon': 'trunks_detection_on_apr_19-04-1'}
+                               'afternoon': 'trunks_detection_on_apr_16-55-1', 'late_afternoon': 'trunks_detection_on_apr_19-04-1'}
 nov_selected_td_experiment = 'trunks_detection_on_nov1_10-12-1'
 #################################################################################################
-
-from content.data_pointers.lavi_april_18.dji import trunks_detection_results_dir as apr_td_results_dir
-from content.data_pointers.lavi_november_18.dji import trunks_detection_results_dir as nov_td_results_dir
 
 if __name__ == '__main__':
 
