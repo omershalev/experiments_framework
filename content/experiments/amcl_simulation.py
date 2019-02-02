@@ -185,9 +185,13 @@ class AmclSimulationExperiment(Experiment):
         # Get trajectory
         waypoints_coordinates = []
         for waypoint in trajectory_waypoints:
-            if type(waypoint) is tuple:
+            if type(waypoint) is tuple and len(waypoint) == 2:
                 point1 = localization_semantic_trunks[waypoint[0]]
                 point2 = localization_semantic_trunks[waypoint[1]]
+                waypoints_coordinates.append(((point1[0] + point2[0]) / 2, (point1[1] + point2[1]) / 2))
+            elif type(waypoint) is tuple and len(waypoint) == 6:
+                point1 = np.array(localization_semantic_trunks[waypoint[0]]) + np.array([waypoint[2], waypoint[3]])
+                point2 = np.array(localization_semantic_trunks[waypoint[1]]) + np.array([waypoint[4], waypoint[5]])
                 waypoints_coordinates.append(((point1[0] + point2[0]) / 2, (point1[1] + point2[1]) / 2))
             else:
                 waypoints_coordinates.append(localization_semantic_trunks[waypoint])
@@ -200,7 +204,7 @@ class AmclSimulationExperiment(Experiment):
         self.results['trajectory'] = path_planning_experiment.results[1]['trajectory']
         trajectory = self.results['trajectory']
         freq = self.params['target_frequency']
-        epsilon_t = 1e-3 # TODO: this is new, suspect here
+        epsilon_t = 1e-3
         timestamps = np.linspace(start=epsilon_t, stop=epsilon_t + (1.0 / freq) * len(trajectory), num=len(trajectory))
         pose_time_tuples_list = [(x, y, t) for (x, y), t in zip(trajectory, timestamps)]
         self.trajectory_bag_path = os.path.join(self.experiment_dir, 'trajectory.bag')
