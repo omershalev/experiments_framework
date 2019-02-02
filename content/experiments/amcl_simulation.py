@@ -106,7 +106,7 @@ class AmclSimulationExperiment(Experiment):
         amcl_results_df.to_csv(amcl_results_path)
         self.results[self.repetition_id]['%s_amcl_results_path' % namespace] = amcl_results_path
 
-    def _get_errors_and_covariance_norms_dataframes(self, namespace):
+    def _get_joint_error_and_covariance_norm_dataframes(self, namespace):
         joint_amcl_results_df = pd.DataFrame()
         for repetition_id in self.valid_repetitions:
             amcl_results_df = pd.read_csv(self.results[repetition_id]['%s_amcl_results_path' % namespace], index_col=0)
@@ -238,13 +238,21 @@ class AmclSimulationExperiment(Experiment):
 
 
     def epilogue(self):
-        # Plot graphs
-        canopies_errors, canopies_covariance_norms = self._get_errors_and_covariance_norms_dataframes(namespace='canopies')
+        # Plot graphs and save aggregated dataframes
+        canopies_errors, canopies_covariance_norms = self._get_joint_error_and_covariance_norm_dataframes(namespace='canopies')
+        canopies_errors.to_csv(os.path.join(self.experiment_dir, 'canopies_errors.csv'))
+        self.results['canopies_errors_path'] = os.path.join(self.experiment_dir, 'canopies_errors.csv')
+        canopies_covariance_norms.to_csv(os.path.join(self.experiment_dir, 'canopies_covariance_norms.csv'))
+        self.results['canopies_covariance_norms_path'] = os.path.join(self.experiment_dir, 'canopies_covariance_norms.csv')
         canopies_mean_errors = canopies_errors.mean(axis=1)
         canopies_std_errors = canopies_errors.std(axis=1)
         canopies_mean_covariance_norms = canopies_covariance_norms.mean(axis=1)
         canopies_std_covariance_norms = canopies_covariance_norms.std(axis=1)
-        trunks_errors, trunks_covariance_norms = self._get_errors_and_covariance_norms_dataframes(namespace='trunks')
+        trunks_errors, trunks_covariance_norms = self._get_joint_error_and_covariance_norm_dataframes(namespace='trunks')
+        trunks_errors.to_csv(os.path.join(self.experiment_dir, 'trunks_errors.csv'))
+        self.results['trunks_errors_path'] = os.path.join(self.experiment_dir, 'trunks_errors.csv')
+        trunks_covariance_norms.to_csv(os.path.join(self.experiment_dir, 'trunks_covariance_norms.csv'))
+        self.results['trunks_covariance_norms_path'] = os.path.join(self.experiment_dir, 'trunks_covariance_norms.csv')
         trunks_mean_errors = trunks_errors.mean(axis=1)
         trunks_std_errors = trunks_errors.std(axis=1)
         trunks_mean_covariance_norms = trunks_covariance_norms.mean(axis=1)
