@@ -84,21 +84,21 @@ class AmclSimulationExperiment(Experiment):
     def _generate_results_dataframe(self, namespace, output_bag_path, image_height):
         ground_truth_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/ugv_pose', fields=['point.x', 'point.y'])
         ground_truth_df['point.x'] = ground_truth_df['point.x'].apply(lambda cell: cell * self.params['localization_resolution'])
-        ground_truth_df['point.y'] = ground_truth_df['point.y'].apply(lambda cell: (image_height - cell) * self.params['localization_resolution'])  # TODO: is this the height of the localization image??
+        ground_truth_df['point.y'] = ground_truth_df['point.y'].apply(lambda cell: (image_height - cell) * self.params['localization_resolution'])
         ground_truth_df.columns = ['ground_truth_x[%d]' % self.repetition_id, 'ground_truth_y[%d]' % self.repetition_id]
         amcl_pose_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/%s/amcl_pose' % namespace, fields=['pose.pose.position.x', 'pose.pose.position.y'])
         amcl_pose_df.columns = ['amcl_pose_x[%d]' % (self.repetition_id), 'amcl_pose_y[%d]' % (self.repetition_id)]
-        def covariance_norm(covariance_mat): # TODO: think about this with Amir
+        def covariance_norm(covariance_mat):
             return np.linalg.norm(np.array(covariance_mat).reshape(6, 6))
         amcl_covariance_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/%s/amcl_pose' % namespace, fields=['pose.covariance'], aggregation=covariance_norm)
         amcl_covariance_df.columns = ['amcl_covariance_norm[%d]' % (self.repetition_id)]
-        ground_truth_df = ground_truth_df[~ground_truth_df.index.duplicated(keep='first')] # TODO: new logic, suspect it!
-        amcl_pose_df = amcl_pose_df[~amcl_pose_df.index.duplicated(keep='first')] # TODO: new logic, suspect it!
-        amcl_covariance_df = amcl_covariance_df[~amcl_covariance_df.index.duplicated(keep='first')] # TODO: new logic, suspect it!
+        ground_truth_df = ground_truth_df[~ground_truth_df.index.duplicated(keep='first')]
+        amcl_pose_df = amcl_pose_df[~amcl_pose_df.index.duplicated(keep='first')]
+        amcl_covariance_df = amcl_covariance_df[~amcl_covariance_df.index.duplicated(keep='first')]
 
         amcl_results_df = pd.concat([ground_truth_df, amcl_pose_df, amcl_covariance_df], axis=1)
-        amcl_results_df['ground_truth_x[%d]' % self.repetition_id] = amcl_results_df['ground_truth_x[%d]' % self.repetition_id].interpolate()  # TODO: try method='time'
-        amcl_results_df['ground_truth_y[%d]' % self.repetition_id] = amcl_results_df['ground_truth_y[%d]' % self.repetition_id].interpolate()  # TODO: try method='time'
+        amcl_results_df['ground_truth_x[%d]' % self.repetition_id] = amcl_results_df['ground_truth_x[%d]' % self.repetition_id].interpolate()
+        amcl_results_df['ground_truth_y[%d]' % self.repetition_id] = amcl_results_df['ground_truth_y[%d]' % self.repetition_id].interpolate()
         error = np.sqrt((amcl_results_df['ground_truth_x[%d]' % self.repetition_id] - amcl_results_df['amcl_pose_x[%d]' % (self.repetition_id)]) ** 2 + \
                         (amcl_results_df['ground_truth_y[%d]' % self.repetition_id] - amcl_results_df['amcl_pose_y[%d]' % (self.repetition_id)]) ** 2)
         amcl_results_df['amcl_pose_error[%d]' % (self.repetition_id)] = error
@@ -145,7 +145,7 @@ class AmclSimulationExperiment(Experiment):
         canopies_map_image = maps_generation.generate_canopies_map(map_image)
         trunks_map_image = maps_generation.generate_trunks_map(map_image, map_semantic_trunks.values(),
                                                                mean_trunk_radius_for_map, std_trunk_radius_for_map,
-                                                               np_random_state=self.np_random_state) # TODO: verify that std is not too small!!!
+                                                               np_random_state=self.np_random_state)
         upper_left, lower_right = cv_utils.get_bounding_box(canopies_map_image, map_semantic_trunks.values(), expand_ratio=bounding_box_expand_ratio)
         canopies_map_image = canopies_map_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
         trunks_map_image = trunks_map_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
@@ -158,7 +158,7 @@ class AmclSimulationExperiment(Experiment):
             localization_image, affine_transform = cv_utils.warp_image(localization_image, localization_semantic_trunks.values(),
                                                                        map_semantic_trunks.values(), method='affine')
             localization_semantic_trunks_np = np.float32(localization_semantic_trunks.values()).reshape(-1, 1, 2)
-            affine_transform = np.insert(affine_transform, [2], [0, 0, 1], axis=0) # TODO: double check if this is correct
+            affine_transform = np.insert(affine_transform, [2], [0, 0, 1], axis=0)
             localization_semantic_trunks_np = cv2.perspectiveTransform(localization_semantic_trunks_np, affine_transform)
             localization_semantic_trunks = {key: (int(np.round(value[0])), int(np.round(value[1]))) for key, value
                                             in zip(map_semantic_trunks.keys(), localization_semantic_trunks_np[:, 0, :].tolist())}
@@ -285,7 +285,7 @@ class AmclSimulationExperiment(Experiment):
         # Start recording output bag
         output_bag_path = os.path.join(self.repetition_dir, '%s_output.bag' % self.name)
         ros_utils.start_recording_bag(output_bag_path, ['/ugv_pose', '/canopies/amcl_pose', '/canopies/particlecloud',
-                                                        '/trunks/amcl_pose', '/trunks/particlecloud']) # TODO: exceptions are thrown!!!
+                                                        '/trunks/amcl_pose', '/trunks/particlecloud'])
 
         # Start input bag and wait
         _, bag_duration = ros_utils.play_bag(self.trajectory_bag_path)
