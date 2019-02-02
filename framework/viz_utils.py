@@ -8,7 +8,7 @@ import config
 def plot_2d_trajectory(dfs, labels=None, colors=None, file_name=None, show=False, xlim=None, ylim=None):
     mpl.rcParams['legend.fontsize'] = 10
     mpl.rcParams['legend.loc'] = 'best'
-    fig = plt.figure()
+    plt.figure()
     for idx, df in enumerate(dfs):
         if colors is not None:
             plt.plot(df[df.columns[0]], df[df.columns[1]], colors[idx])
@@ -30,13 +30,13 @@ def plot_2d_trajectory(dfs, labels=None, colors=None, file_name=None, show=False
         plt.show()
 
 
-def plot_line_with_sleeve(vector, sleeve_width, color):
+def plot_line_with_sleeve(vector, sleeve_width, color, dashed=False):
     upper_bound = vector + sleeve_width / 2
     lower_bound = vector - sleeve_width / 2
-    color_string_to_char = {'red': 'r', 'green': 'g'}
-    plt.plot(vector, color_string_to_char[color])
-    plt.plot(upper_bound, '%s--' % color_string_to_char[color])
-    plt.plot(lower_bound, '%s--' % color_string_to_char[color])
+    if dashed:
+        plt.plot(vector, color, linestyle='--')
+    else:
+        plt.plot(vector, color)
     plt.fill_between(vector.index, upper_bound, lower_bound, facecolor=color, alpha=0.2)
 
 

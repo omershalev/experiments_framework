@@ -119,7 +119,8 @@ class AmclSimulationExperiment(Experiment):
     def _plot_canopies_vs_trunks(self, plot_name, canopies_vector, trunks_vector, canopies_stds, trunks_stds, output_dir):
         plt.figure()
         viz_utils.plot_line_with_sleeve(canopies_vector, 2 * canopies_stds, 'green')
-        viz_utils.plot_line_with_sleeve(trunks_vector, 2 * trunks_stds, 'red')
+        viz_utils.plot_line_with_sleeve(trunks_vector, 2 * trunks_stds, 'sienna', dashed=True)
+        plt.autoscale(enable=True, axis='x', tight=True)
         plt.tight_layout()
         plt.savefig(os.path.join(output_dir, '%s.png' % plot_name))
 
@@ -235,7 +236,6 @@ class AmclSimulationExperiment(Experiment):
         trunks_invalid_scans = np.sum([np.all(np.isnan(scan)) for scan in trunks_scans.values()])
         trunks_total_timestamps = len(trunks_scans.values())
         self.results['trunks_valid_scans_rate'] = float(trunks_total_timestamps - trunks_invalid_scans) / trunks_total_timestamps
-
 
     def epilogue(self):
         # Plot graphs and save aggregated dataframes
