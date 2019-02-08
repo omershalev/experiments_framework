@@ -77,7 +77,7 @@ def run_node(package, node, namespace=None, argc=None, argv=None):
     return node_proc
 
 
-def play_bag(bag_path, use_clock=True):
+def play_bag(bag_path, use_clock=True, start_time=0):
     _logger.info('Starting bag playing')
     if type(bag_path) == tuple:
         bags = [rosbag.Bag(single_bag_path) for single_bag_path in bag_path]
@@ -87,10 +87,13 @@ def play_bag(bag_path, use_clock=True):
         bag = rosbag.Bag(bag_path)
         duration_in_seconds = bag.get_end_time() - bag.get_start_time()
         path_for_command_line = bag_path
-    if use_clock:
-        play_proc = utils.new_process(['rosbag', 'play', path_for_command_line, '--clock'], output_to_console=True)
+    if start_time == 0:
+        command = ['rosbag', 'play', path_for_command_line]
     else:
-        play_proc = utils.new_process(['rosbag', 'play', path_for_command_line], output_to_console=True)
+        command = ['rosbag', 'play', '-s', str(start_time), path_for_command_line]
+    if use_clock:
+        command = command + ['--clock']
+    play_proc = utils.new_process(command, output_to_console=True)
     return play_proc, duration_in_seconds
 
 
@@ -193,7 +196,7 @@ def play_video_to_topic(video_path, topic, frame_id):
                 message.header.stamp = stamp
                 message.header.frame_id = ros_frame_id
                 if frame_idx != 0:
-                    delay = max(0, (video_timestamp - prev_video_timestamp) - (time.time() - prev_publish_time) - 5e-2)
+                    delay = max(0, (video_timestamp - prev_video_timestamp) - (time.time() - prev_publish_time))
                     time.sleep(delay)
                 pub.publish(message)
                 prev_publish_time = time.time()
@@ -218,6 +221,7 @@ def trajectory_to_bag(pose_time_tuples_list, bag_path, topic='ugv_pose'):
         point_message.point.x = x
         point_message.point.y = y
         point_message.header.stamp = ros_time
+        # TODO: add seq?
         bag.write(topic, point_message, ros_time)
     bag.close()
 
