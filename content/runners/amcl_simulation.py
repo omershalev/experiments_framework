@@ -65,32 +65,40 @@ def min_amcl_particles_configs_factory():
                              odometry_noise_sigma_x=0,
                              odometry_noise_sigma_y=0,
                              scan_noise_sigma=0,
-                             min_amcl_particles=int(particles)) for particles in np.linspace(start=100, stop=5000, num=10)]
+                             min_amcl_particles=int(particles)) for particles in [100, 500, 1000, 1500, 2000, 2500, 3000, 5000]]
 
 #################################################################################################
 #                                             CONFIG                                            #
 #################################################################################################
-description = 'amcl_simulation_particles_number'
+description = 'amcl_baseline'
 repetitions = 10
 two_snapshot = False
-# experiment_configs_list = [ExperimentConfig(odometry_noise_mu_x=0,
-#                                             odometry_noise_mu_y=0,
-#                                             odometry_noise_sigma_x=0,
-#                                             odometry_noise_sigma_y=0,
-#                                             scan_noise_sigma=0,
-#                                             min_amcl_particles=2500)]
-experiment_configs_list = min_amcl_particles_configs_factory() + scan_noise_configs_factory() + odometry_skid_xy_configs_factory() + odometry_skid_x_configs_factory()
-first_sample_only = True
-first_trajectory_only = True
+experiment_configs_list = [ExperimentConfig(odometry_noise_mu_x=0,
+                                            odometry_noise_mu_y=0,
+                                            odometry_noise_sigma_x=0,
+                                            odometry_noise_sigma_y=0,
+                                            scan_noise_sigma=0,
+                                            min_amcl_particles=2500)]
+# experiment_configs_list = min_amcl_particles_configs_factory()
+first_sample_only = False
+first_trajectory_only = False
 setup = 'apr' # apr / nov1 / nov2
 #################################################################################################
 
 if setup == 'apr':
     from content.data_pointers.lavi_april_18.dji import trunks_detection_results_dir as td_results_dir
     from content.data_pointers.lavi_april_18.dji import selected_trunks_detection_experiments as selected_td_experiments
-    from content.data_pointers.lavi_april_18 import orchard_topology
+    from content.data_pointers.lavi_april_18.orchard_topology import measured_trunks_perimeters
+    from content.data_pointers.lavi_april_18.orchard_topology import measured_row_widths
+    from content.data_pointers.lavi_april_18.orchard_topology import measured_intra_row_distances
+    from content.data_pointers.lavi_april_18.orchard_topology import trajectories
 elif setup == 'nov1':
-    raise NotImplementedError # TODO: implement
+    from content.data_pointers.lavi_november_18.dji import trunks_detection_results_dir as td_results_dir
+    from content.data_pointers.lavi_november_18.dji import plot1_selected_trunks_detection_experiments as selected_td_experiments
+    from content.data_pointers.lavi_november_18.orchard_topology import plot1_measured_trunks_perimeters as measured_trunks_perimeters
+    from content.data_pointers.lavi_november_18.orchard_topology import plot1_measured_row_widths as measured_row_widths
+    from content.data_pointers.lavi_november_18.orchard_topology import plot1_measured_intra_row_distances as measured_intra_row_distances
+    from content.data_pointers.lavi_november_18.orchard_topology import plot1_trajectories as trajectories
 elif setup == 'nov2':
     raise NotImplementedError # TODO: implement
 
@@ -114,11 +122,11 @@ if __name__ == '__main__':
         optimized_grid_dim_y_for_map = td_summary_for_map['results']['1']['optimized_grid_dim_y']
         optimized_grid_dim_x_for_localization = td_summary_for_map['results']['1']['optimized_grid_dim_x']
         optimized_grid_dim_y_for_localization = td_summary_for_map['results']['1']['optimized_grid_dim_y']
-        mean_trunk_radius, std_trunk_radius = calibration.calculate_trunk_radius_in_meters(orchard_topology.measured_trunks_perimeters)
+        mean_trunk_radius, std_trunk_radius = calibration.calculate_trunk_radius_in_meters(measured_trunks_perimeters)
         pixel_to_meter_ratio_for_map = calibration.calculate_pixel_to_meter(optimized_grid_dim_x_for_map, optimized_grid_dim_y_for_map,
-                                                                            orchard_topology.measured_row_widths, orchard_topology.measured_intra_row_distances)
+                                                                            measured_row_widths, measured_intra_row_distances)
         pixel_to_meter_ratio_for_localization = calibration.calculate_pixel_to_meter(optimized_grid_dim_x_for_localization, optimized_grid_dim_y_for_localization,
-                                                                                     orchard_topology.measured_row_widths, orchard_topology.measured_intra_row_distances)
+                                                                                     measured_row_widths, measured_intra_row_distances)
         mean_trunk_radius_in_pixels_for_map = int(np.round(mean_trunk_radius * config.trunk_dilation_ratio * pixel_to_meter_ratio_for_map))
         mean_trunk_radius_in_pixels_for_localization = int(np.round(mean_trunk_radius * config.trunk_dilation_ratio * pixel_to_meter_ratio_for_localization))
         std_trunk_radius_in_pixels_for_map = std_trunk_radius * config.trunk_std_increasing_factor * pixel_to_meter_ratio_for_map
@@ -131,19 +139,17 @@ if __name__ == '__main__':
         localization_semantic_trunks = td_summary_for_localization['results']['1']['semantic_trunks']
 
         for experiment_config in experiment_configs_list:
-            for trajectory_name in orchard_topology.trajectories.keys():
+            for trajectory_name in trajectories.keys():
                 experiment = AmclSimulationExperiment(name='amcl_snapshots_for_%s_trajectory_on_%s' %
                                                            (trajectory_name, (map_image_key if not two_snapshot else '%s_and_%s' % (map_image_key, localization_image_key))),
                                                       data_sources={'map_image_path': map_image_path, 'localization_image_path': localization_image_path,
                                                                     'map_semantic_trunks': map_semantic_trunks, 'localization_semantic_trunks': localization_semantic_trunks,
-                                                                    'trajectory_waypoints': orchard_topology.trajectories[trajectory_name]},
+                                                                    'trajectory_waypoints': trajectories[trajectory_name]},
                                                       params={'odometry_noise_mu_x': experiment_config.odometry_noise_mu_x,
                                                               'odometry_noise_mu_y': experiment_config.odometry_noise_mu_y,
                                                               'odometry_noise_sigma_x': experiment_config.odometry_noise_sigma_x,
                                                               'odometry_noise_sigma_y': experiment_config.odometry_noise_sigma_y,
                                                               'bounding_box_expand_ratio': config.bounding_box_expand_ratio,
-                                                              'cost_map_gaussian_scale_factor': config.cost_map_gaussians_scale_factor,
-                                                              'cost_map_canopy_sigma': optimized_sigma,
                                                               'min_angle': config.synthetic_scan_min_angle,
                                                               'max_angle': config.synthetic_scan_max_angle,
                                                               'samples_num': config.synthetic_scan_samples_num,
