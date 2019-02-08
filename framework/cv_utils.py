@@ -1,4 +1,5 @@
 import cv2
+import os
 import numpy as np
 import time
 from skimage.measure import compare_ssim as ssim
@@ -29,6 +30,19 @@ def sample_pixel_coordinates(image, multiple=False):
         return cs.clicked_points
     else:
         return cs.clicked_points[0]
+
+
+def sample_video(video_path, output_path, start_time, stop_time, samples):
+    def _get_image_from_video(video_path, time_in_msec):
+        cap = cv2.VideoCapture(video_path)
+        cap.set(cv2.CAP_PROP_POS_MSEC, time_in_msec)
+        is_success, frame = cap.read()
+        if is_success:
+            return frame
+        return None
+    for t in np.linspace(start_time, stop_time, samples):
+        image = _get_image_from_video(video_path, time_in_msec=t * 1e3)
+        cv2.imwrite(os.path.join(output_path, '%d.jpg' % int(t)), image)
 
 
 def sample_hsv_color(image):
@@ -102,11 +116,14 @@ def draw_lines_on_image(image, lines_list, color, thickness=5):
     return image_copy
 
 
-def put_shaded_text_on_image(image, label, location, color):
+def put_shaded_text_on_image(image, label, location, color, offset=None):
     image_copy = image.copy()
-    cv2.putText(image_copy, label, tuple(np.array(location) + np.array([-38, -68])),
+    if offset is None:
+        offset = (0, 0)
+    shadow_offset = (offset[0] + 2, offset[1] + 2)
+    cv2.putText(image_copy, label, tuple(np.array(location) + np.array(shadow_offset)),
                 fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=(30, 30, 30), thickness=10, lineType=cv2.LINE_AA)
-    cv2.putText(image_copy, label, tuple(np.array(location) + np.array([-40, -70])),
+    cv2.putText(image_copy, label, tuple(np.array(location) + np.array(offset)),
                 fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=2, color=color, thickness=10, lineType=cv2.LINE_AA)
     return image_copy
 
@@ -158,17 +175,16 @@ def get_coordinates_list_from_scan_ranges(scan_ranges, center_x, center_y, min_a
     return coordinates_list
 
 
-def warp_image(image, points_in_image, points_in_baseline, method='affine'):
-    # TODO: add RANSAC!!!!!!
-    if method == 'homographic':
+def warp_image(image, points_in_image, points_in_baseline, transformation_type='affine'):
+    if transformation_type == 'homographic':
         h, _ = cv2.findHomography(np.float32(points_in_image), np.float32(points_in_baseline))
         warpped_image = cv2.warpPerspective(image, h, (image.shape[1], image.shape[0]))
         return warpped_image, h
-    elif method == 'affine':
+    elif transformation_type == 'affine':
         M, _ = cv2.estimateAffine2D(np.float32(points_in_image), np.float32(points_in_baseline))
         warpped_image = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
         return warpped_image, M
-    elif method == 'rigid':
+    elif transformation_type == 'rigid':
         M = cv2.estimateRigidTransform(np.float32(points_in_image), np.float32(points_in_baseline), fullAffine=False)
         warpped_image = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
         return warpped_image, M
@@ -176,9 +192,9 @@ def warp_image(image, points_in_image, points_in_baseline, method='affine'):
         raise Exception('Unsupported method')
 
 
-def calculate_image_diff(image1, image2, method='mse', x_crop_ratio=0.3, y_crop_ratio=0.3):
+def calculate_image_similarity(image1, image2, method='mse', x_crop_ratio=0.35, y_crop_ratio=0.35):
     if image1.shape != image2.shape:
-        raise Exception('Two images must have the same dimension')
+        raise Exception('Two images must agree on dimensions')
     if len(image1.shape) == 3:
         image1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
         image2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
