@@ -53,6 +53,8 @@ class TrunksDetectionExperiment(Experiment):
             for angle in angle_to_sum_vector:
                 plt.figure()
                 plt.plot(angle_to_sum_vector[angle], color='green')
+                plt.xlabel('x')
+                plt.ylabel('column sums')
                 plt.ylim([(-0.05 * max_sum_value), int(max_sum_value * 1.05)])
                 plt.autoscale(enable=True, axis='x', tight=True)
                 plt.tight_layout()
@@ -64,17 +66,31 @@ class TrunksDetectionExperiment(Experiment):
             viz_utils.show_image('vertical rows', vertical_rows_image)
 
         # Get tree centroids
-        centroids, rotated_centroids, aisle_centers, slices_and_sums_vectors = trunks_detection.find_tree_centroids(cropped_image, correction_angle=orientation * (-1))
-        vertical_rows_aisle_centers_image = cv_utils.draw_lines_on_image(vertical_rows_image, lines_list=[((center, 0), (center, vertical_rows_image.shape[0]))
+        centroids, rotated_centroids, aisle_centers, slices_and_sums_vectors, column_sums_vector = trunks_detection.find_tree_centroids(cropped_image, correction_angle=orientation * (-1))
+        _, vertical_rows_canopies_mask = segmentation.extract_canopy_contours(vertical_rows_image)
+        vertical_rows_aisle_centers_image = cv_utils.draw_lines_on_image(cv2.cvtColor(vertical_rows_canopies_mask, cv2.COLOR_GRAY2BGR),
+                                                                         lines_list=[((center, 0), (center, vertical_rows_image.shape[0]))
                                                                          for center in aisle_centers], color=(0, 0, 255))
         cv2.imwrite(os.path.join(self.repetition_dir, 'vertical_rows_aisle_centers.jpg'), vertical_rows_aisle_centers_image)
-        slice_image, sums_vector = slices_and_sums_vectors[len(slices_and_sums_vectors) / 2]
-        cv2.imwrite(os.path.join(self.repetition_dir, 'vertical_row_slice.jpg'), slice_image)
         plt.figure()
-        plt.plot(sums_vector, color='green')
+        plt.plot(column_sums_vector, color='green')
+        plt.xlabel('x')
+        plt.ylabel('column sums')
+        plt.ticklabel_format(axis='y', style='sci', scilimits=(0, 4))
         plt.autoscale(enable=True, axis='x', tight=True)
         plt.tight_layout()
-        plt.savefig(os.path.join(self.repetition_dir, 'slice_horizontal_sums_vector.jpg'))
+        plt.savefig(os.path.join(self.repetition_dir, 'vertical_rows_column_sums.jpg'))
+        slice_image, slice_row_sums_vector = slices_and_sums_vectors[len(slices_and_sums_vectors) / 2]
+        cv2.imwrite(os.path.join(self.repetition_dir, 'vertical_row_slice.jpg'), slice_image)
+        plt.figure()
+        plt.plot(slice_row_sums_vector, range(len(slice_row_sums_vector)), color='green')
+        plt.xlabel('row sums')
+        plt.ylabel('y')
+        plt.axes().set_aspect(60)
+        plt.ticklabel_format(axis='x', style='sci', scilimits=(0, 4))
+        plt.autoscale(enable=True, axis='y', tight=True)
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.repetition_dir, 'slice_row_sums.jpg'))
         vertical_rows_centroids_image = cv_utils.draw_points_on_image(vertical_rows_image, itertools.chain.from_iterable(rotated_centroids), color=(0, 0, 255))
         cv2.imwrite(os.path.join(self.repetition_dir, 'vertical_rows_centroids.jpg'), vertical_rows_centroids_image)
         if viz_mode:
@@ -83,11 +99,13 @@ class TrunksDetectionExperiment(Experiment):
 
         # Estimate grid parameters
         grid_dim_x, grid_dim_y = trunks_detection.estimate_grid_dimensions(rotated_centroids)
-        shear, drift_vectors = trunks_detection.estimate_shear(rotated_centroids)
-        drift_vectors_image = cv_utils.draw_lines_on_image(vertical_rows_centroids_image, drift_vectors, color=(255, 255, 0))
+        shear, drift_vectors, drift_vectors_filtered = trunks_detection.estimate_shear(rotated_centroids)
+        drift_vectors_image = cv_utils.draw_lines_on_image(vertical_rows_centroids_image, drift_vectors, color=(255, 255, 0), arrowed=True)
         cv2.imwrite(os.path.join(self.repetition_dir, 'drift_vectors.jpg'), drift_vectors_image)
+        drift_vectors_filtered_image = cv_utils.draw_lines_on_image(vertical_rows_centroids_image, drift_vectors_filtered, color=(255, 255, 0), arrowed=True)
+        cv2.imwrite(os.path.join(self.repetition_dir, 'drift_vectors_filtered.jpg'), drift_vectors_filtered_image)
         if viz_mode:
-            viz_utils.show_image('drift vectors', drift_vectors_image)
+            viz_utils.show_image('drift vectors', drift_vectors_filtered_image)
 
         # Get essential grid
         essential_grid = trunks_detection.get_essential_grid(grid_dim_x, grid_dim_y, shear, orientation, n=self.params['grid_size_for_optimization'])
@@ -104,8 +122,8 @@ class TrunksDetectionExperiment(Experiment):
         positioned_grid, translation, drift_vectors = trunks_detection.find_min_mse_position(centroids, essential_grid, cropped_image.shape[1], cropped_image.shape[0])
         if positioned_grid is None:
             raise ExperimentFailure
-        positioned_grid_image = cv_utils.draw_points_on_image(cropped_image, positioned_grid, color=(255, 0, 0), radius=20)
-        positioned_grid_image = cv_utils.draw_points_on_image(positioned_grid_image, centroids, color=(0, 0, 255), radius=10)
+        positioned_grid_image = cv_utils.draw_points_on_image(cropped_image, positioned_grid, color=(255, 0, 0), radius=25)
+        positioned_grid_image = cv_utils.draw_points_on_image(positioned_grid_image, centroids, color=(0, 0, 255))
         positioned_grid_image = cv_utils.draw_lines_on_image(positioned_grid_image, drift_vectors, color=(255, 255, 0), thickness=3)
         cv2.imwrite(os.path.join(self.repetition_dir, 'positioned_grid.jpg'), positioned_grid_image)
         if viz_mode:
