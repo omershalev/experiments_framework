@@ -109,10 +109,13 @@ def draw_points_on_image(image, points_list, color, radius=15):
     return image_copy
 
 
-def draw_lines_on_image(image, lines_list, color, thickness=5):
+def draw_lines_on_image(image, lines_list, color, thickness=5, arrowed=False):
     image_copy = image.copy()
     for point1, point2 in lines_list:
-        cv2.line(image_copy, (int(point1[0]), int(point1[1])), (int(point2[0]), int(point2[1])), color=color, thickness=thickness)
+        if arrowed:
+            cv2.arrowedLine(image_copy, (int(point1[0]), int(point1[1])), (int(point2[0]), int(point2[1])), color=color, thickness=thickness)
+        else:
+            cv2.line(image_copy, (int(point1[0]), int(point1[1])), (int(point2[0]), int(point2[1])), color=color, thickness=thickness)
     return image_copy
 
 
@@ -202,7 +205,7 @@ def calculate_image_similarity(image1, image2, method='mse', x_crop_ratio=0.35, 
     image2 = center_crop(image2, x_crop_ratio, y_crop_ratio)
     if method == 'mse':
         err = np.sum((image1.astype('float') - image2.astype('float')) ** 2)
-        err /= float(image1.shape[0] * image1.shape[1])
+        err /= float(image1.shape[0] * image1.shape[1] * 255 ** 2)
     elif method == 'ssim':
         err = ssim(image1, image2)
     else:
