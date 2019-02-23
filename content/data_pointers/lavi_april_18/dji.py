@@ -44,10 +44,10 @@ snapshots_80_meters = {
                          '15-19-4': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0135.JPG'), 'table in 5-6, 4 landmarks, 80 meters'),
                          '15-19-5': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0136.JPG'), 'table in 5-6, 4 landmarks, 80 meters'),
 
-                         '15-53-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0149.JPG'), '4 landmarks, 80 meters'),
-                         '15-53-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0150.JPG'), '4 landmarks, 80 meters'),
-                         '15-53-3': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0151.JPG'), '4 landmarks, 80 meters'),
-                         '15-53-4': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0152.JPG'), '4 landmarks, 80 meters'),
+                         '15-53-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0149.JPG'), '4 landmarks, ~70 meters'),
+                         '15-53-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0150.JPG'), '4 landmarks, ~70 meters'),
+                         '15-53-3': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0151.JPG'), '4 landmarks, ~70 meters'),
+                         '15-53-4': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0152.JPG'), '4 landmarks, ~70 meters'),
 
                          '16-55-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0162.JPG'), '4 landmarks, 80 meters'),
                          '16-55-2': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0163.JPG'), '4 landmarks, 80 meters'),
@@ -64,4 +64,7 @@ snapshots_80_meters = {
 snapshots_80_meters_markers_locations_json_path = os.path.join(markers_locations_path, 'snapshots_80_meters.json')
 
 trunks_detection_results_dir = os.path.join(config.base_results_path, 'trunks_detection')
-selected_trunks_detection_experiments = ['manual_apr_15-08-1', 'manual_apr_15-17-1', 'manual_apr_15-18-3', 'manual_apr_15-19-1', 'manual_apr_15-53-1', 'manual_apr_16-55-1', 'manual_apr_19-04-1']
+selected_trunks_detection_experiments = ['trunks_detection_on_apr_15-08-1',
+                                         'trunks_detection_on_apr_15-53-1',
+                                         'trunks_detection_on_apr_16-55-1',
+                                         'trunks_detection_on_apr_19-04-1']

@@ -90,7 +90,7 @@ plot1_snapshots_80_meters = {
                         '10-32-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0293.JPG'), '4 landmarks, 80 meters, with vehicle'),
                     }
 plot1_snapshots_80_meters_markers_locations_json_path = os.path.join(markers_locations_path, 'plot1_snapshots_80_meters.json')
-plot1_snapshots_80_meters_ugv_poses = os.path.join(base_resources_path, 'ugv_poses', 'plot1_snapshots_80_meters_ugv_poses.json')
+plot1_snapshots_80_meters_ugv_poses_path = os.path.join(base_resources_path, 'ugv_poses', 'plot1_snapshots_80_meters_ugv_poses.json')
 
 plot2_snapshots_80_meters = {
                         '11-06-1': DataDescriptor(os.path.join(base_path, 'dji', 'DJI_0295.JPG'), '4 landmarks, 80 meters'),
@@ -194,4 +194,5 @@ plot4_snapshots_80_meters_markers_locations_json_path = os.path.join(markers_loc
 trunks_detection_results_dir = os.path.join(config.base_results_path, 'trunks_detection')
 plot1_selected_trunks_detection_experiments = ['trunks_detection_on_nov1_10-09-9', 'trunks_detection_on_nov1_10-10-9',
                                                'trunks_detection_on_nov1_10-12-1']
-plot2_selected_trunks_detection_experiments = ['trunks_detection_on_nov2_11-07-5', 'trunks_detection_on_nov2_11-07-22']
+plot2_selected_trunks_detection_experiments = ['trunks_detection_on_nov2_11-07-5', 'trunks_detection_on_nov2_11-07-19',
+                                               'trunks_detection_on_nov2_11-07-22']
