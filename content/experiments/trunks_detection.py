@@ -3,6 +3,7 @@ import itertools
 
 import cv2
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 
 from computer_vision import trunks_detection
@@ -34,9 +35,14 @@ class TrunksDetectionExperiment(Experiment):
         cv2.imwrite(os.path.join(self.repetition_dir, 'canopies_mask.jpg'), canopies_mask)
 
         # Crop central ROI
-        cropped_image_size = np.min([image.shape[0], image.shape[1]]) * self.params['crop_ratio']
+        cropped_image_size = int(np.min([image.shape[0], image.shape[1]]) * self.params['crop_ratio'])
         cropped_image, crop_origin, _ = cv_utils.crop_region(image, x_center=image.shape[1] / 2, y_center=image.shape[0] / 2,
                                                              x_pixels=cropped_image_size, y_pixels=cropped_image_size)
+        _, cropped_canopies_mask = segmentation.extract_canopy_contours(cropped_image)
+        crop_square_image = image.copy()
+        cv2.rectangle(crop_square_image, crop_origin, (crop_origin[0] + cropped_image_size, crop_origin[1] + cropped_image_size),
+                      color=(120, 0, 0), thickness=20)
+        cv2.imwrite(os.path.join(self.repetition_dir, 'crop_square_image.jpg'), crop_square_image)
         cv2.imwrite(os.path.join(self.repetition_dir, 'cropped_image.jpg'), cropped_image)
         if viz_mode:
             viz_utils.show_image('cropped image', cropped_image)
@@ -47,7 +53,9 @@ class TrunksDetectionExperiment(Experiment):
         vertical_rows_image = cv2.warpAffine(cropped_image, rotation_mat, (cropped_image.shape[1], cropped_image.shape[0]))
         cv2.imwrite(os.path.join(self.repetition_dir, 'vertical_rows.jpg'), vertical_rows_image)
         if verbose_mode:
-            self.results[self.repetition_id]['angle_to_minima_mean'] = angle_to_minima_mean
+            angle_to_minima_mean_df = pd.DataFrame(angle_to_minima_mean.values(), index=angle_to_minima_mean.keys(), columns=['minima_mean']).sort_index()
+            angle_to_minima_mean_df.to_csv(os.path.join(self.repetition_dir, 'angle_to_minima_mean.csv'))
+            self.results[self.repetition_id]['angle_to_minima_mean_path'] = os.path.join(self.repetition_dir, 'angle_to_minima_mean.csv')
             max_sum_value = max(map(lambda vector: vector.max(), angle_to_sum_vector.values()))
             os.mkdir(os.path.join(self.repetition_dir, 'orientation_estimation'))
             for angle in angle_to_sum_vector:
@@ -56,21 +64,26 @@ class TrunksDetectionExperiment(Experiment):
                 plt.xlabel('x')
                 plt.ylabel('column sums')
                 plt.ylim([(-0.05 * max_sum_value), int(max_sum_value * 1.05)])
+                plt.ticklabel_format(axis='y', style='sci', scilimits=(0, 4))
                 plt.autoscale(enable=True, axis='x', tight=True)
                 plt.tight_layout()
                 plt.savefig(os.path.join(self.repetition_dir, 'orientation_estimation', 'sums_vector_%.2f[deg].jpg' % angle))
-                rotation_mat = cv2.getRotationMatrix2D((image.shape[1] / 2, image.shape[0] / 2), angle, scale=1.0)
-                rotated_canopies_mask = cv2.warpAffine(canopies_mask, rotation_mat, (canopies_mask.shape[1], canopies_mask.shape[0]))
-                cv2.imwrite(os.path.join(self.repetition_dir, 'orientation_estimation', 'rotated_canopies_mask_%.2f[deg].jpg' % angle), rotated_canopies_mask)
+                rotation_mat = cv2.getRotationMatrix2D((cropped_canopies_mask.shape[1] / 2, cropped_canopies_mask.shape[0] / 2), angle, scale=1.0)
+                rotated_canopies_mask = cv2.warpAffine(cropped_canopies_mask, rotation_mat, (cropped_canopies_mask.shape[1], cropped_canopies_mask.shape[0]))
+                cv2.imwrite(os.path.join(self.repetition_dir, 'orientation_estimation', 'rotated_canopies_mask_%.2f[deg]_minima_mean=%.2f.jpg'
+                                         % (angle, angle_to_minima_mean[angle])), rotated_canopies_mask)
         if viz_mode:
             viz_utils.show_image('vertical rows', vertical_rows_image)
 
         # Get tree centroids
-        centroids, rotated_centroids, aisle_centers, slices_and_sums_vectors, column_sums_vector = trunks_detection.find_tree_centroids(cropped_image, correction_angle=orientation * (-1))
+        centroids, rotated_centroids, aisle_centers, slices_sum_vectors_and_trees, column_sums_vector = trunks_detection.find_tree_centroids(cropped_image, correction_angle=orientation * (-1))
         _, vertical_rows_canopies_mask = segmentation.extract_canopy_contours(vertical_rows_image)
         vertical_rows_aisle_centers_image = cv_utils.draw_lines_on_image(cv2.cvtColor(vertical_rows_canopies_mask, cv2.COLOR_GRAY2BGR),
                                                                          lines_list=[((center, 0), (center, vertical_rows_image.shape[0]))
                                                                          for center in aisle_centers], color=(0, 0, 255))
+        slice_image, slice_row_sums_vector, tree_locations_in_row = slices_sum_vectors_and_trees[len(slices_sum_vectors_and_trees) / 2]
+        tree_locations = [(slice_image.shape[1] / 2, vertical_location) for vertical_location in tree_locations_in_row]
+        slice_image = cv_utils.draw_points_on_image(cv2.cvtColor(slice_image, cv2.COLOR_GRAY2BGR), tree_locations, color=(0, 0, 255))
         cv2.imwrite(os.path.join(self.repetition_dir, 'vertical_rows_aisle_centers.jpg'), vertical_rows_aisle_centers_image)
         plt.figure()
         plt.plot(column_sums_vector, color='green')
@@ -80,10 +93,9 @@ class TrunksDetectionExperiment(Experiment):
         plt.autoscale(enable=True, axis='x', tight=True)
         plt.tight_layout()
         plt.savefig(os.path.join(self.repetition_dir, 'vertical_rows_column_sums.jpg'))
-        slice_image, slice_row_sums_vector = slices_and_sums_vectors[len(slices_and_sums_vectors) / 2]
         cv2.imwrite(os.path.join(self.repetition_dir, 'vertical_row_slice.jpg'), slice_image)
-        plt.figure()
-        plt.plot(slice_row_sums_vector, range(len(slice_row_sums_vector)), color='green')
+        plt.figure(figsize=(4, 5))
+        plt.plot(slice_row_sums_vector[::-1], range(len(slice_row_sums_vector)), color='green')
         plt.xlabel('row sums')
         plt.ylabel('y')
         plt.axes().set_aspect(60)
@@ -136,7 +148,6 @@ class TrunksDetectionExperiment(Experiment):
         grid = trunks_detection.get_grid(grid_dim_x, grid_dim_y, translation, orientation, shear, n=self.params['grid_size_for_optimization'])
         gaussians_filter = trunks_detection.get_gaussians_grid_image(grid, sigma, cropped_image.shape[1], cropped_image.shape[0])
         cv2.imwrite(os.path.join(self.repetition_dir, 'gaussians_filter.jpg'), 255.0 * gaussians_filter)
-        _, cropped_canopies_mask = segmentation.extract_canopy_contours(cropped_image)
         filter_output = np.multiply(gaussians_filter, cropped_canopies_mask)
         cv2.imwrite(os.path.join(self.repetition_dir, 'filter_output.jpg'), filter_output)
         if viz_mode:
@@ -187,11 +198,39 @@ class TrunksDetectionExperiment(Experiment):
             viz_utils.show_image('full grid', full_grid_image)
 
         # Match given orchard pattern to grid
-        full_grid_scores_np = trunks_detection.get_grid_scores_array(full_grid_np, image, sigma)
+        full_grid_scores_np, full_grid_pose_to_score = trunks_detection.get_grid_scores_array(full_grid_np, image, sigma)
+        full_grid_with_scores_image = full_grid_image.copy()
+        top_bottom_margin_size = int(0.05 * full_grid_with_scores_image.shape[0])
+        left_right_marign_size = int(0.05 * full_grid_with_scores_image.shape[1])
+        full_grid_with_scores_image = cv2.copyMakeBorder(full_grid_with_scores_image, top_bottom_margin_size, top_bottom_margin_size,
+                                                         left_right_marign_size, left_right_marign_size, cv2.BORDER_CONSTANT,
+                                                         dst=None, value=(255, 255, 255))
+        for pose, score in full_grid_pose_to_score.items():
+            pose = tuple(np.array(pose) + np.array([left_right_marign_size, top_bottom_margin_size]))
+            full_grid_with_scores_image = cv_utils.put_shaded_text_on_image(full_grid_with_scores_image, '%.2f' % score,
+                                                                            pose, color=(0, 255, 0), offset=(15, 15))
+        cv2.imwrite(os.path.join(self.repetition_dir, 'full_grid_with_scores.jpg'), full_grid_with_scores_image)
         orchard_pattern_np = self.params['orchard_pattern']
-        pattern_origin, _ = trunks_detection.fit_pattern_on_grid(full_grid_scores_np, orchard_pattern_np)
+        pattern_origin, origin_to_sub_scores_array = trunks_detection.fit_pattern_on_grid(full_grid_scores_np, orchard_pattern_np)
         if pattern_origin is None:
             raise ExperimentFailure
+        if verbose_mode:
+            os.mkdir(os.path.join(self.repetition_dir, 'pattern_matching'))
+            for step_origin, step_sub_score_array in origin_to_sub_scores_array.items():
+                pattern_matching_image = image.copy()
+                step_trunk_coordinates_np = full_grid_np[step_origin[0] : step_origin[0] + orchard_pattern_np.shape[0],
+                                                         step_origin[1] : step_origin[1] + orchard_pattern_np.shape[1]]
+                step_trunk_points_list = step_trunk_coordinates_np.flatten().tolist()
+                pattern_matching_image = cv_utils.draw_points_on_image(pattern_matching_image, step_trunk_points_list, color=(255, 255, 255), radius=25)
+                for i in range(step_trunk_coordinates_np.shape[0]):
+                    for j in range(step_trunk_coordinates_np.shape[1]):
+                        step_trunk_coordinates = (int(step_trunk_coordinates_np[(i, j)][0]), int(step_trunk_coordinates_np[(i, j)][1]))
+                        pattern_matching_image = cv_utils.put_shaded_text_on_image(pattern_matching_image, '%.2f' % step_sub_score_array[(i, j)],
+                                                                                   step_trunk_coordinates, color=(255, 255, 255), offset=(20, 20))
+                pattern_matching_image = cv_utils.draw_points_on_image(pattern_matching_image, [elem for elem in full_grid_np.flatten() if type(elem) is tuple], color=(0, 255, 0))
+                mean_score = float(np.mean(step_sub_score_array))
+                cv2.imwrite(os.path.join(self.repetition_dir, 'pattern_matching', 'origin=%d_%d_score=%.2f.jpg' %
+                                         (step_origin[0], step_origin[1], mean_score)), pattern_matching_image)
         trunk_coordinates_np = full_grid_np[pattern_origin[0] : pattern_origin[0] + orchard_pattern_np.shape[0],
                                             pattern_origin[1] : pattern_origin[1] + orchard_pattern_np.shape[1]]
         trunk_points_list = trunk_coordinates_np[orchard_pattern_np == 1]
@@ -206,7 +245,6 @@ class TrunksDetectionExperiment(Experiment):
                 tree_label = '%d/%s' % (j + 1, chr(65 + (trunk_coordinates_np.shape[0] - 1 - i)))
                 semantic_trunks_image = cv_utils.put_shaded_text_on_image(semantic_trunks_image, tree_label, trunk_coordinates,
                                                                                   color=(255, 255, 255), offset=(15, 15))
-
         cv2.imwrite(os.path.join(self.repetition_dir, 'semantic_trunks.jpg'), semantic_trunks_image)
         if viz_mode:
             viz_utils.show_image('semantic trunks', semantic_trunks_image)
