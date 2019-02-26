@@ -14,9 +14,9 @@ from content.experiments.path_planning import PathPlanningExperiment
 #                                             CONFIG                                            #
 #################################################################################################
 from content.data_pointers.lavi_april_18.dji import trunks_detection_results_dir as td_results_dir
-td_baseline_experiment_name = 'manual_apr_15-08-1'
-td_obstacle_1_experiment_name = 'manual_apr_15-19-1'
-td_obstacle_2_experiment_name = 'manual_apr_15-17-1'
+td_baseline_experiment_name = 'trunks_detection_on_apr_15-08-1'
+td_obstacle_1_experiment_name = 'trunks_detection_on_apr_15-19-1'
+td_obstacle_2_experiment_name = 'trunks_detection_on_apr_15-17-1'
 obstacle_1_location = (2743, 1320)
 obstacle_2_location = (2181, 1770)
 trajectory_waypoints = [('8/A', '9/A'),
@@ -34,7 +34,7 @@ obstacle_size = [80, 80]
 
 
 def get_trajectory(td_summary, image_path, start_waypoint_idx, end_waypoint_idx=None):
-    semantic_trunks = td_summary['results']['0']['semantic_trunks']
+    semantic_trunks = td_summary['results']['1']['semantic_trunks']
     trunk_points_list = semantic_trunks.values()
     image = cv2.imread(image_path)
     upper_left, lower_right = cv_utils.get_bounding_box(image, trunk_points_list, expand_ratio=config.bounding_box_expand_ratio)
@@ -54,7 +54,7 @@ def get_trajectory(td_summary, image_path, start_waypoint_idx, end_waypoint_idx=
 
 
 def plot_trajectory(td_summary, image_path, trajectory, waypoints_coordinates, start_waypoint_idx, output_file_path):
-    semantic_trunks = td_summary['results']['0']['semantic_trunks']
+    semantic_trunks = td_summary['results']['1']['semantic_trunks']
     trunk_points_list = semantic_trunks.values()
     image = cv2.imread(image_path)
     upper_left, lower_right = cv_utils.get_bounding_box(image, trunk_points_list, expand_ratio=config.bounding_box_expand_ratio)
@@ -66,7 +66,8 @@ def plot_trajectory(td_summary, image_path, trajectory, waypoints_coordinates, s
     label_idx = start_waypoint_idx
     for coordinates in waypoints_coordinates:
         trajectory_image = cv_utils.put_shaded_text_on_image(trajectory_image, label=chr(label_idx + 65),
-                                                             location=tuple(np.array(coordinates) - np.array(upper_left)), color=(0, 255, 255))
+                                                             location=tuple(np.array(coordinates) - np.array(upper_left)),
+                                                             color=(0, 255, 255), offset=(-40, -70))
         label_idx += 1
     cv2.imwrite(os.path.join(output_file_path), trajectory_image)
 
