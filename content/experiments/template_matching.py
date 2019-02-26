@@ -1,10 +1,12 @@
 import json
 import cv2
-import numpy as np
 import os
+import numpy as np
+import pandas as pd
 
 from content.data_pointers.lavi_april_18.dji import snapshots_80_meters, snapshots_80_meters_markers_locations_json_path
 from framework import cv_utils
+from framework import utils
 from framework import viz_utils
 from framework.experiment import Experiment
 
@@ -16,63 +18,55 @@ class TemplateMatchingExperiment(Experiment):
 
     def task(self, **kwargs):
 
-        viz_mode = kwargs.get('viz_mode')
+        verbose_mode = kwargs.get('verbose_mode')
 
+        # Read params and data sources
         map_image_path = self.data_sources['map_image_path']
         localization_image_path = self.data_sources['localization_image_path']
-        roi_center = self.data_sources['roi_center']
-        map_alignment_points = self.data_sources['map_alignment_points']
-        localization_alignment_points = self.data_sources['localization_alignment_points']
+        trajectory = self.data_sources['trajectory']
+        map_semantic_trunks = self.data_sources['map_semantic_trunks']
+        bounding_box_expand_ratio = self.params['bounding_box_expand_ratio']
         roi_size = self.params['roi_size']
+        methods = self.params['methods']
+        downsample_rate = self.params['downsample_rate']
+        localization_resolution = self.params['localization_resolution']
 
+        # Read images
         map_image = cv2.imread(map_image_path)
         localization_image = cv2.imread(localization_image_path)
-        localization_image, _ = cv_utils.warp_image(localization_image, localization_alignment_points, map_alignment_points)
-        roi_image, _, _ = cv_utils.crop_region(localization_image, roi_center[0], roi_center[1], roi_size, roi_size)
-        matches_image = map_image.copy()
-        cv2.circle(matches_image, roi_center, radius=15, color=(0, 0, 255), thickness=-1)
-        cv2.rectangle(matches_image, (roi_center[0] - roi_size / 2, roi_center[1] - roi_size / 2),
-                                     (roi_center[0] + roi_size / 2, roi_center[1] + roi_size / 2), (0, 0, 255), thickness=2)
+        upper_left, lower_right = cv_utils.get_bounding_box(map_image, map_semantic_trunks.values(), expand_ratio=bounding_box_expand_ratio)
+        map_image = map_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
+        cv2.imwrite(os.path.join(self.experiment_dir, 'map_image.jpg'), map_image)
+        cv2.imwrite(os.path.join(self.experiment_dir, 'localization_image.jpg'), localization_image)
 
-        for method in ['TM_CCOEFF', 'TM_CCOEFF_NORMED', 'TM_CCORR', 'TM_CCORR_NORMED', 'TM_SQDIFF', 'TM_SQDIFF_NORMED']:
-            matching_result = cv2.matchTemplate(map_image, roi_image, method=eval('cv2.%s' % method))
-            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(matching_result)
-            if method in ['TM_SQDIFF', 'TM_SQDIFF_NORMED']:
-                match_top_left = min_loc
-            else:
-                match_top_left = max_loc
-            match_bottom_right = (match_top_left[0] + roi_image.shape[1], match_top_left[1] + roi_image.shape[0])
-            match_center = (match_top_left[0] + roi_image.shape[1] / 2, match_top_left[1] + roi_image.shape[0] / 2)
-            cv2.rectangle(matches_image, match_top_left, match_bottom_right, (255, 0, 0), thickness=2)
-            cv2.circle(matches_image, match_center, radius=15, color=(255, 0, 0), thickness=-1)
-            cv2.imwrite(os.path.join(self.repetition_dir, 'matches.jpg'), matches_image)
-        if viz_mode:
-            viz_utils.show_image('matches image', matches_image)
+        # Initialize errors dataframe
+        errors = pd.DataFrame(index=map(lambda point: '%s_%s' % (point[0], point[1]), trajectory), columns=methods)
 
-        self.results[self.repetition_id]['error'] = np.sqrt((roi_center[0] - match_center[0]) ** 2 + (roi_center[1] - match_center[1]) ** 2)
+        # Loop over points in trajectory
+        for ugv_pose_idx, ugv_pose in enumerate(trajectory):
+            if ugv_pose_idx % downsample_rate != 0:
+                continue
+            roi_image, _, _ = cv_utils.crop_region(localization_image, ugv_pose[0], ugv_pose[1], roi_size, roi_size)
+            if verbose_mode:
+                matches_image = map_image.copy()
+                cv2.circle(matches_image, tuple(ugv_pose), radius=15, color=(0, 0, 255), thickness=-1)
+                cv2.rectangle(matches_image, (ugv_pose[0] - roi_size / 2, ugv_pose[1] - roi_size / 2),
+                              (ugv_pose[0] + roi_size / 2, ugv_pose[1] + roi_size / 2), (0, 0, 255), thickness=2)
+            for method in methods:
+                matching_result = cv2.matchTemplate(map_image, roi_image, method=eval('cv2.%s' % method))
+                min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(matching_result)
+                if method in ['TM_SQDIFF', 'TM_SQDIFF_NORMED']:
+                    match_top_left = min_loc
+                else:
+                    match_top_left = max_loc
+                match_bottom_right = (match_top_left[0] + roi_image.shape[1], match_top_left[1] + roi_image.shape[0])
+                match_center = (match_top_left[0] + roi_image.shape[1] / 2, match_top_left[1] + roi_image.shape[0] / 2)
+                error = np.sqrt((ugv_pose[0] - match_center[0]) ** 2 + (ugv_pose[1] - match_center[1]) ** 2) * localization_resolution
+                errors.loc['%s_%s' % (ugv_pose[0], ugv_pose[1]), method] = error
+                if verbose_mode:
+                    cv2.rectangle(matches_image, match_top_left, match_bottom_right, (255, 0, 0), thickness=2)
+                    cv2.circle(matches_image, match_center, radius=15, color=(255, 0, 0), thickness=-1)
+                    cv2.imwrite(os.path.join(self.repetition_dir, 'matches_%s_%s.jpg' % (ugv_pose[0], ugv_pose[1])), matches_image)
 
-
-if __name__ == '__main__':
-    image_key1 = snapshots_80_meters.keys()[0]
-    image_key2 = snapshots_80_meters.keys()[2]
-    with open(snapshots_80_meters_markers_locations_json_path) as f:
-        all_markers_locations = json.load(f)
-    points1 = all_markers_locations[image_key1]
-    points2 = all_markers_locations[image_key2]
-
-
-    experiment = TemplateMatchingExperiment(name='template_matching_%s_to_%s' % (image_key1, image_key2),
-                                            data_sources={'map_image_path': snapshots_80_meters[image_key1].path,
-                                                          'localization_image_path': snapshots_80_meters[image_key2].path,
-                                                          'roi_center': (1900, 2000), # TODO: change!!!
-                                                          'map_alignment_points': points1,
-                                                          'localization_alignment_points': points2},
-                                            params={'roi_size': 350}, # TODO: change!!! (you can play with this parameter and show the different results but everything still doesn't help...)
-                                            working_dir=r'/home/omer/temp', # TODO: change!!!
-                                            metadata={}# TODO: change!!!
-                                            )
-    experiment.run(repetitions=1, viz_mode=True)
-
-    # TODO: align images
-    # TODO: show also how it works on grayscale and on contours mask (i.e. not working) ==> something temporal is needed (and in lower dimension, i.e. laser)
-    # TODO: The poent here is that template matching is difficult with orchard image (everything's green and brown) ==> even temporal thing (LSTM) will be difficult because you need some basic recognition to work!!
+        # Save results
+        errors.to_csv(os.path.join(self.experiment_dir, 'errors.csv'))
