@@ -95,7 +95,6 @@ class AmclSimulationExperiment(Experiment):
         ground_truth_df = ground_truth_df[~ground_truth_df.index.duplicated(keep='first')]
         amcl_pose_df = amcl_pose_df[~amcl_pose_df.index.duplicated(keep='first')]
         amcl_covariance_df = amcl_covariance_df[~amcl_covariance_df.index.duplicated(keep='first')]
-
         amcl_results_df = pd.concat([ground_truth_df, amcl_pose_df, amcl_covariance_df], axis=1)
         amcl_results_df['ground_truth_x[%d]' % self.repetition_id] = amcl_results_df['ground_truth_x[%d]' % self.repetition_id].interpolate()
         amcl_results_df['ground_truth_y[%d]' % self.repetition_id] = amcl_results_df['ground_truth_y[%d]' % self.repetition_id].interpolate()
@@ -131,7 +130,9 @@ class AmclSimulationExperiment(Experiment):
     def prologue(self):
         origin_map_image_path = self.data_sources['map_image_path']
         map_semantic_trunks = self.data_sources['map_semantic_trunks']
+        map_external_trunks = self.data_sources['map_external_trunks']
         localization_semantic_trunks = self.data_sources['localization_semantic_trunks']
+        localization_external_trunks = self.data_sources['localization_external_trunks']
         origin_localization_image_path = self.data_sources['localization_image_path']
         trajectory_waypoints = self.data_sources['trajectory_waypoints']
         bounding_box_expand_ratio = self.params['bounding_box_expand_ratio']
@@ -144,7 +145,7 @@ class AmclSimulationExperiment(Experiment):
         map_image = cv2.imread(origin_map_image_path)
         cv2.imwrite(os.path.join(self.experiment_dir, 'image_for_map.jpg'), map_image)
         canopies_map_image = maps_generation.generate_canopies_map(map_image)
-        trunks_map_image = maps_generation.generate_trunks_map(map_image, map_semantic_trunks.values(),
+        trunks_map_image = maps_generation.generate_trunks_map(map_image, map_semantic_trunks.values() + map_external_trunks,
                                                                mean_trunk_radius_for_map, std_trunk_radius_for_map,
                                                                np_random_state=self.np_random_state)
         upper_left, lower_right = cv_utils.get_bounding_box(canopies_map_image, map_semantic_trunks.values(), expand_ratio=bounding_box_expand_ratio)
@@ -157,7 +158,7 @@ class AmclSimulationExperiment(Experiment):
         localization_image = cv2.imread(origin_localization_image_path)
         if origin_localization_image_path != origin_map_image_path:
             localization_image, affine_transform = cv_utils.warp_image(localization_image, localization_semantic_trunks.values(),
-                                                                       map_semantic_trunks.values(), method='affine')
+                                                                       map_semantic_trunks.values(), transformation_type='affine')
             localization_semantic_trunks_np = np.float32(localization_semantic_trunks.values()).reshape(-1, 1, 2)
             affine_transform = np.insert(affine_transform, [2], [0, 0, 1], axis=0)
             localization_semantic_trunks_np = cv2.perspectiveTransform(localization_semantic_trunks_np, affine_transform)
@@ -168,7 +169,7 @@ class AmclSimulationExperiment(Experiment):
         else:
             image_for_trajectory_path = origin_localization_image_path
         canopies_localization_image = maps_generation.generate_canopies_map(localization_image)
-        trunks_localization_image = maps_generation.generate_trunks_map(localization_image, localization_semantic_trunks.values(),
+        trunks_localization_image = maps_generation.generate_trunks_map(localization_image, localization_semantic_trunks.values() + localization_external_trunks,
                                                                         mean_trunk_radius_for_localization, std_trunk_radius_for_localization,
                                                                         np_random_state=self.np_random_state)
         canopies_localization_image = canopies_localization_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]

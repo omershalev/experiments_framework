@@ -9,27 +9,10 @@ from framework import utils
 from framework import config
 from content.experiments.amcl_simulation import AmclSimulationExperiment
 
+
 ExperimentConfig = namedtuple('ExperimentConfig', ['odometry_noise_mu_x', 'odometry_noise_mu_y',
                                                    'odometry_noise_sigma_x', 'odometry_noise_sigma_y',
                                                    'scan_noise_sigma', 'min_amcl_particles'])
-
-
-def odometry_drift_x_configs_factory():
-    return [ExperimentConfig(odometry_noise_mu_x=mu_x,
-                             odometry_noise_mu_y=0,
-                             odometry_noise_sigma_x=0,
-                             odometry_noise_sigma_y=0,
-                             scan_noise_sigma=0,
-                             min_amcl_particles=2500) for mu_x in np.logspace(start=0, stop=1, num=10, base=0.001)]
-
-
-def odometry_drift_xy_configs_factory():
-    return [ExperimentConfig(odometry_noise_mu_x=mu,
-                             odometry_noise_mu_y=mu,
-                             odometry_noise_sigma_x=0,
-                             odometry_noise_sigma_y=0,
-                             scan_noise_sigma=0,
-                             min_amcl_particles=2500) for mu in np.logspace(start=0, stop=1, num=10, base=0.001)]
 
 
 def odometry_skid_x_configs_factory():
@@ -38,16 +21,17 @@ def odometry_skid_x_configs_factory():
                              odometry_noise_sigma_x=sigma_x,
                              odometry_noise_sigma_y=0,
                              scan_noise_sigma=0,
-                             min_amcl_particles=2500) for sigma_x in np.logspace(start=0, stop=1, num=10, base=0.01)]
+                             # min_amcl_particles=2500) for sigma_x in np.logspace(start=0, stop=1, num=10, base=0.01)]
+                             min_amcl_particles=1000) for sigma_x in [2, 1, 0.5, 0.1]]
 
 
-def odometry_skid_xy_configs_factory():
-    return [ExperimentConfig(odometry_noise_mu_x=0,
+def odometry_skid_and_drift_x_configs_factory(sigma_x):
+    return [ExperimentConfig(odometry_noise_mu_x=mu_x,
                              odometry_noise_mu_y=0,
-                             odometry_noise_sigma_x=sigma,
-                             odometry_noise_sigma_y=sigma,
+                             odometry_noise_sigma_x=sigma_x,
+                             odometry_noise_sigma_y=0,
                              scan_noise_sigma=0,
-                             min_amcl_particles=2500) for sigma in np.logspace(start=0, stop=1, num=10, base=0.01)]
+                             min_amcl_particles=1000) for mu_x in np.logspace(start=0, stop=1, num=10, base=0.001)]
 
 
 def scan_noise_configs_factory():
@@ -56,7 +40,11 @@ def scan_noise_configs_factory():
                              odometry_noise_sigma_x=0,
                              odometry_noise_sigma_y=0,
                              scan_noise_sigma=sigma,
-                             min_amcl_particles=2500) for sigma in np.logspace(start=0, stop=1, num=10, base=0.01)]
+                             # min_amcl_particles=2500) for sigma in np.logspace(start=0, stop=1, num=10, base=0.01)]
+                             # min_amcl_particles=2500) for sigma in [2, 1, 0.5, 0.1]]
+                             # min_amcl_particles=1000) for sigma in [0.4, 0.5, 0.6, 0.7, 0.8]] # this is the interesting one
+                             min_amcl_particles=1000) for sigma in [0.3, 0.4, 0.5, 0.6]]
+                             # 0.9 and 1 diverge, 0.5 almost converged
 
 
 def min_amcl_particles_configs_factory():
@@ -65,22 +53,23 @@ def min_amcl_particles_configs_factory():
                              odometry_noise_sigma_x=0,
                              odometry_noise_sigma_y=0,
                              scan_noise_sigma=0,
-                             min_amcl_particles=int(particles)) for particles in [100, 500, 1000, 1500, 2000, 2500, 3000, 5000]]
-
+                             # min_amcl_particles=int(particles)) for particles in [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000]]
+                             min_amcl_particles=int(particles)) for particles in [50, 100, 200, 300]]
+# TODO: start at 250!!
 #################################################################################################
 #                                             CONFIG                                            #
 #################################################################################################
-description = 'amcl_baseline'
+description = '250_noises'
 repetitions = 10
-two_snapshot = False
+different_localization_and_mapping_sources = True
 experiment_configs_list = [ExperimentConfig(odometry_noise_mu_x=0,
                                             odometry_noise_mu_y=0,
                                             odometry_noise_sigma_x=0,
                                             odometry_noise_sigma_y=0,
                                             scan_noise_sigma=0,
-                                            min_amcl_particles=2500)]
-# experiment_configs_list = min_amcl_particles_configs_factory()
-first_sample_only = False
+                                            min_amcl_particles=1000)]
+# experiment_configs_list = scan_noise_configs_factory() + odometry_skid_x_configs_factory()
+first_sample_only = True
 first_trajectory_only = False
 setup = 'apr' # apr / nov1 / nov2
 #################################################################################################
@@ -106,7 +95,7 @@ elif setup == 'nov2':
 if __name__ == '__main__':
     execution_dir = utils.create_new_execution_folder(description)
 
-    for td_experiment in combinations(selected_td_experiments, r=2 if two_snapshot else 1):
+    for td_experiment in combinations(selected_td_experiments, r=2 if different_localization_and_mapping_sources else 1):
         td_experiment_name_for_map = td_experiment[0]
         if len(td_experiment) == 2:
             td_experiment_name_for_localization = td_experiment[1]
@@ -134,16 +123,26 @@ if __name__ == '__main__':
         map_image_path = td_summary_for_map['data_sources']
         map_image_key = td_summary_for_map['metadata']['image_key']
         map_semantic_trunks = td_summary_for_map['results']['1']['semantic_trunks']
+        if os.path.exists(os.path.join(td_results_dir, td_experiment_name_for_map, 'external_trunks.json')):
+            with open(os.path.join(td_results_dir, td_experiment_name_for_map, 'external_trunks.json')) as f:
+                map_external_trunks = json.load(f)
+        else:
+            map_external_trunks = []
         localization_image_path = td_summary_for_localization['data_sources']
         localization_image_key = td_summary_for_localization['metadata']['image_key']
         localization_semantic_trunks = td_summary_for_localization['results']['1']['semantic_trunks']
-
+        if os.path.exists(os.path.join(td_results_dir, td_experiment_name_for_localization, 'external_trunks.json')):
+            with open(os.path.join(td_results_dir, td_experiment_name_for_localization, 'external_trunks.json')) as f:
+                localization_external_trunks = json.load(f)
+        else:
+            localization_external_trunks = []
         for experiment_config in experiment_configs_list:
             for trajectory_name in trajectories.keys():
                 experiment = AmclSimulationExperiment(name='amcl_snapshots_for_%s_trajectory_on_%s' %
-                                                           (trajectory_name, (map_image_key if not two_snapshot else '%s_and_%s' % (map_image_key, localization_image_key))),
+                                                           (trajectory_name, (map_image_key if not different_localization_and_mapping_sources else '%s_and_%s' % (map_image_key, localization_image_key))),
                                                       data_sources={'map_image_path': map_image_path, 'localization_image_path': localization_image_path,
                                                                     'map_semantic_trunks': map_semantic_trunks, 'localization_semantic_trunks': localization_semantic_trunks,
+                                                                    'map_external_trunks': map_external_trunks, 'localization_external_trunks': localization_external_trunks,
                                                                     'trajectory_waypoints': trajectories[trajectory_name]},
                                                       params={'odometry_noise_mu_x': experiment_config.odometry_noise_mu_x,
                                                               'odometry_noise_mu_y': experiment_config.odometry_noise_mu_y,
