@@ -159,11 +159,14 @@ class AmclSimulationExperiment(Experiment):
         if origin_localization_image_path != origin_map_image_path:
             localization_image, affine_transform = cv_utils.warp_image(localization_image, localization_semantic_trunks.values(),
                                                                        map_semantic_trunks.values(), transformation_type='affine')
-            localization_semantic_trunks_np = np.float32(localization_semantic_trunks.values()).reshape(-1, 1, 2)
             affine_transform = np.insert(affine_transform, [2], [0, 0, 1], axis=0)
+            localization_semantic_trunks_np = np.float32(localization_semantic_trunks.values()).reshape(-1, 1, 2)
             localization_semantic_trunks_np = cv2.perspectiveTransform(localization_semantic_trunks_np, affine_transform)
             localization_semantic_trunks = {key: (int(np.round(value[0])), int(np.round(value[1]))) for key, value
                                             in zip(map_semantic_trunks.keys(), localization_semantic_trunks_np[:, 0, :].tolist())}
+            localization_external_trunks_np = np.float32(localization_external_trunks).reshape(-1, 1, 2)
+            localization_external_trunks_np = cv2.perspectiveTransform(localization_external_trunks_np, affine_transform)
+            localization_external_trunks = localization_external_trunks_np[:, 0, :].tolist()
             image_for_trajectory_path = os.path.join(self.experiment_dir, 'aligned_image_for_localization.jpg')
             cv2.imwrite(image_for_trajectory_path, localization_image)
         else:
