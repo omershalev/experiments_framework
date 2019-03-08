@@ -1,13 +1,9 @@
-import json
 import cv2
 import os
 import numpy as np
 import pandas as pd
 
-from content.data_pointers.lavi_april_18.dji import snapshots_80_meters, snapshots_80_meters_markers_locations_json_path
 from framework import cv_utils
-from framework import utils
-from framework import viz_utils
 from framework.experiment import Experiment
 
 
@@ -36,6 +32,7 @@ class TemplateMatchingExperiment(Experiment):
         localization_image = cv2.imread(localization_image_path)
         upper_left, lower_right = cv_utils.get_bounding_box(map_image, map_semantic_trunks.values(), expand_ratio=bounding_box_expand_ratio)
         map_image = map_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
+        localization_image = localization_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
         cv2.imwrite(os.path.join(self.experiment_dir, 'map_image.jpg'), map_image)
         cv2.imwrite(os.path.join(self.experiment_dir, 'localization_image.jpg'), localization_image)
 
