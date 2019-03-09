@@ -5,10 +5,9 @@ import matplotlib.pyplot as plt
 
 import config
 
-def plot_2d_trajectory(dfs, labels=None, colors=None, file_name=None, show=False, xlim=None, ylim=None):
+def plot_2d_trajectory(dfs, labels=None, colors=None, file_name=None, show=False, xlim=None, ylim=None, label_x_axis=True, label_y_axis=True):
     mpl.rcParams['legend.fontsize'] = 10
     mpl.rcParams['legend.loc'] = 'best'
-    plt.figure()
     for idx, df in enumerate(dfs):
         if colors is not None:
             plt.plot(df[df.columns[0]], df[df.columns[1]], colors[idx])
@@ -16,8 +15,14 @@ def plot_2d_trajectory(dfs, labels=None, colors=None, file_name=None, show=False
             plt.plot(df[df.columns[0]], df[df.columns[1]])
     if labels is not None:
         plt.legend(labels)
-    plt.xlabel('x [m]')
-    plt.ylabel('y [m]')
+    if label_x_axis:
+        plt.xlabel('x [m]')
+    else:
+        plt.tick_params(labelbottom=False)
+    if label_y_axis:
+        plt.ylabel('y [m]')
+    else:
+        plt.tick_params(labelleft=False)
     if xlim is not None:
         plt.xlim(xlim)
     if ylim is not None:
