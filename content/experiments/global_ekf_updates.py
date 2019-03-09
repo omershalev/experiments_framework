@@ -39,7 +39,7 @@ class GlobalEkfUpdatesExperiment(Experiment):
         ekf_with_aerial_update_df = ros_utils.bag_to_dataframe(output_bag_path, topic=r'/odometry/filtered/aerial_updates',
                                                                fields=['pose.pose.position.x', 'pose.pose.position.y'])
         ekf_df.to_csv(os.path.join(self.repetition_dir, 'ekf_pose.csv'))
-        ekf_with_aerial_update_df.to_csv(os.path.join(self.repetition_dir, 'ekf_with_aerial_update_df_pose.csv'))
+        ekf_with_aerial_update_df.to_csv(os.path.join(self.repetition_dir, 'ekf_with_aerial_update_pose.csv'))
         self.results[self.repetition_id]['ekf_pose_path'] = os.path.join(self.repetition_dir, 'ekf_pose.csv')
         self.results[self.repetition_id]['ekf_with_aerial_update_path'] = os.path.join(self.repetition_dir, 'ekf_with_aerial_update_pose.csv')
         viz_utils.plot_2d_trajectory([ekf_df, ekf_with_aerial_update_df], labels=['EKF', 'EKF with aerial updates'],
