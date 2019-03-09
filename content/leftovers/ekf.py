@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from framework.experiment import Experiment
 import framework.ros_utils as ros_utils
@@ -46,6 +47,7 @@ class Ekf(Experiment):
             for plot_name, df in plot_dict.items():
                 plot_list.append(df.head(int(p * len(df.index))))
                 colors.append(plots_colormap[plot_name])
+            plt.figure()
             viz_utils.plot_2d_trajectory(plot_list, labels=plot_dict.keys(), colors=colors,
                                          file_name=os.path.join(self.repetition_dir, '2d_trajectory_%d' % int(100*p)),
                                          xlim=(min_xy.loc['pose.pose.position.x']-15, max_xy.loc['pose.pose.position.x']+15),

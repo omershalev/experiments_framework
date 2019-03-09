@@ -7,7 +7,7 @@ from framework import utils
 from framework import viz_utils
 from framework.experiment import Experiment
 
-class Icp(Experiment):
+class JackalIcp(Experiment):
 
     def clean_env(self):
         utils.kill_process('laser_scan_matcher_node')
@@ -15,7 +15,7 @@ class Icp(Experiment):
 
     def task(self, **kwargs):
         ros_utils.start_master(use_sim_time=True)
-        ros_utils.launch(package='localization', launch_file='jackal_scan_matcher.launch') # TODO: fine tune params
+        ros_utils.launch(package='localization', launch_file='jackal_scan_matcher.launch')
         output_bag_path = os.path.join(self.repetition_dir, '%s_output.bag' % self.name)
         ros_utils.start_recording_bag(output_bag_path, ['/scanmatcher_pose',])
         _, bag_duration = ros_utils.play_bag(self.data_sources, use_clock=True)
