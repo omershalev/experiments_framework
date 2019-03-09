@@ -5,7 +5,7 @@ from framework.experiment import Experiment
 from framework import ros_utils
 from framework import utils
 
-class Gmapping(Experiment):
+class JackalGmapping(Experiment):
 
     def clean_env(self):
         utils.kill_process('slam_gmapping')
