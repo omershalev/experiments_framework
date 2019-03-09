@@ -82,15 +82,15 @@ def play_bag(bag_path, use_clock=True, start_time=0):
     if type(bag_path) == tuple:
         bags = [rosbag.Bag(single_bag_path) for single_bag_path in bag_path]
         duration_in_seconds = sum([bag.get_end_time() - bag.get_start_time() for bag in bags])
-        path_for_command_line = ' '.join(bag_path)
+        path_for_command_line = list(bag_path)
     else:
         bag = rosbag.Bag(bag_path)
         duration_in_seconds = bag.get_end_time() - bag.get_start_time()
-        path_for_command_line = bag_path
+        path_for_command_line = [bag_path]
     if start_time == 0:
-        command = ['rosbag', 'play', path_for_command_line]
+        command = ['rosbag', 'play'] + path_for_command_line
     else:
-        command = ['rosbag', 'play', '-s', str(start_time), path_for_command_line]
+        command = ['rosbag', 'play', '-s', str(start_time)] + path_for_command_line
     if use_clock:
         command = command + ['--clock']
     play_proc = utils.new_process(command, output_to_console=True)
@@ -212,7 +212,6 @@ def play_video_to_topic(video_path, topic, frame_id):
 def trajectory_to_bag(pose_time_tuples_list, bag_path, topic='ugv_pose'):
     bag = rosbag.Bag(bag_path, 'w')
     for pose_time in pose_time_tuples_list:
-        # TODO: go over legacy code and see where IMAGE_HEIGHT is subtracted
         x = pose_time[0]
         y = pose_time[1]
         t = pose_time[2]
@@ -221,7 +220,6 @@ def trajectory_to_bag(pose_time_tuples_list, bag_path, topic='ugv_pose'):
         point_message.point.x = x
         point_message.point.y = y
         point_message.header.stamp = ros_time
-        # TODO: add seq?
         bag.write(topic, point_message, ros_time)
     bag.close()
 
