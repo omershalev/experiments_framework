@@ -27,12 +27,12 @@ if __name__ == '__main__':
 
     print 'groud truth:'
     warped_image_gt2 = cv_utils.warp_image(image=image2, points_in_image=markers2, points_in_baseline=markers1)
-    print cv_utils.calculate_image_diff(image1, warped_image_gt2, method='ssim')
-    print cv_utils.calculate_image_diff(image1, warped_image_gt2, method='mse')
+    print cv_utils.calculate_image_similarity(image1, warped_image_gt2, method='ssim')
+    print cv_utils.calculate_image_similarity(image1, warped_image_gt2, method='mse')
     print ('')
     warped_image_gt1 = cv_utils.warp_image(image=image1, points_in_image=markers1, points_in_baseline=markers2)
-    print cv_utils.calculate_image_diff(image2, warped_image_gt1, method='ssim')
-    print cv_utils.calculate_image_diff(image2, warped_image_gt1, method='mse')
+    print cv_utils.calculate_image_similarity(image2, warped_image_gt1, method='ssim')
+    print cv_utils.calculate_image_similarity(image2, warped_image_gt1, method='mse')
 
 
     if viz_mode:
@@ -44,11 +44,11 @@ if __name__ == '__main__':
     warped_image2 = cv_utils.warp_image(image=image2, points_in_image=points2, points_in_baseline=points1)
     if viz_mode:
         viz_utils.show_image('warped image', warped_image2)
-    print cv_utils.calculate_image_diff(image1, warped_image2, method='ssim')
-    print cv_utils.calculate_image_diff(image1, warped_image2, method='mse')
+    print cv_utils.calculate_image_similarity(image1, warped_image2, method='ssim')
+    print cv_utils.calculate_image_similarity(image1, warped_image2, method='mse')
     print ('')
     warped_image1 = cv_utils.warp_image(image=image1, points_in_image=points1, points_in_baseline=points2)
     if viz_mode:
         viz_utils.show_image('warped image', warped_image1)
-    print cv_utils.calculate_image_diff(image2, warped_image1, method='ssim')
-    print cv_utils.calculate_image_diff(image2, warped_image1, method='mse')
+    print cv_utils.calculate_image_similarity(image2, warped_image1, method='ssim')
+    print cv_utils.calculate_image_similarity(image2, warped_image1, method='mse')

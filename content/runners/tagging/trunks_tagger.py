@@ -33,7 +33,7 @@ elif setup == 'nov4':
     from content.data_pointers.lavi_november_18.orchard_topology import plot4_pattern as plot_pattern
 
 
-image_keys = ['16-55-1', '19-04-1']
+image_keys = ['15-17-1', '15-18-3', '15-19-1']
 
 if __name__ == '__main__':
     execution_dir = utils.create_new_execution_folder('trunks_tagging')

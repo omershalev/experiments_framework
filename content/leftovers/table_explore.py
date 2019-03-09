@@ -71,16 +71,16 @@ if __name__ == '__main__':
 
     # TODO: try once more the enabling of my estimated transform (instead of the ground truth)
     if use_ground_truth:
-        warped_obstacle_in_3_4_image, _ = cv_utils.warp_image(image=obstacle_in_3_4_image, points_in_image=markers_obstacle_in_3_4, points_in_baseline=markers_basline, method='rigid')
-        warped_obstacle_in_4_5_image, _ = cv_utils.warp_image(image=obstacle_in_4_5_image, points_in_image=markers_obstacle_in_4_5, points_in_baseline=markers_basline, method='rigid')
-        warped_obstacle_in_5_6_image, _ = cv_utils.warp_image(image=obstacle_in_5_6_image, points_in_image=markers_obstacle_in_5_6, points_in_baseline=markers_basline, method='rigid')
-        warped_obstacle_in_3_4_gray_image, _ = cv_utils.warp_image(image=obstacle_in_3_4_gray_image, points_in_image=markers_obstacle_in_3_4, points_in_baseline=markers_basline, method='rigid')
-        warped_obstacle_in_4_5_gray_image, _ = cv_utils.warp_image(image=obstacle_in_4_5_gray_image, points_in_image=markers_obstacle_in_4_5, points_in_baseline=markers_basline, method='rigid')
-        warped_obstacle_in_5_6_gray_image, _ = cv_utils.warp_image(image=obstacle_in_5_6_gray_image, points_in_image=markers_obstacle_in_5_6, points_in_baseline=markers_basline, method='rigid')
+        warped_obstacle_in_3_4_image, _ = cv_utils.warp_image(image=obstacle_in_3_4_image, points_in_image=markers_obstacle_in_3_4, points_in_baseline=markers_basline, transformation_type='rigid')
+        warped_obstacle_in_4_5_image, _ = cv_utils.warp_image(image=obstacle_in_4_5_image, points_in_image=markers_obstacle_in_4_5, points_in_baseline=markers_basline, transformation_type='rigid')
+        warped_obstacle_in_5_6_image, _ = cv_utils.warp_image(image=obstacle_in_5_6_image, points_in_image=markers_obstacle_in_5_6, points_in_baseline=markers_basline, transformation_type='rigid')
+        warped_obstacle_in_3_4_gray_image, _ = cv_utils.warp_image(image=obstacle_in_3_4_gray_image, points_in_image=markers_obstacle_in_3_4, points_in_baseline=markers_basline, transformation_type='rigid')
+        warped_obstacle_in_4_5_gray_image, _ = cv_utils.warp_image(image=obstacle_in_4_5_gray_image, points_in_image=markers_obstacle_in_4_5, points_in_baseline=markers_basline, transformation_type='rigid')
+        warped_obstacle_in_5_6_gray_image, _ = cv_utils.warp_image(image=obstacle_in_5_6_gray_image, points_in_image=markers_obstacle_in_5_6, points_in_baseline=markers_basline, transformation_type='rigid')
     else:
-        warped_obstacle_in_3_4_gray_image, _ = cv_utils.warp_image(image=obstacle_in_3_4_gray_image, points_in_image=points_obstacle_in_3_4, points_in_baseline=points_baseline, method='rigid')
-        warped_obstacle_in_4_5_gray_image, _ = cv_utils.warp_image(image=obstacle_in_4_5_gray_image, points_in_image=points_obstacle_in_4_5, points_in_baseline=points_baseline, method='rigid')
-        warped_obstacle_in_5_6_gray_image, _ = cv_utils.warp_image(image=obstacle_in_5_6_gray_image, points_in_image=points_obstacle_in_5_6, points_in_baseline=points_baseline, method='rigid')
+        warped_obstacle_in_3_4_gray_image, _ = cv_utils.warp_image(image=obstacle_in_3_4_gray_image, points_in_image=points_obstacle_in_3_4, points_in_baseline=points_baseline, transformation_type='rigid')
+        warped_obstacle_in_4_5_gray_image, _ = cv_utils.warp_image(image=obstacle_in_4_5_gray_image, points_in_image=points_obstacle_in_4_5, points_in_baseline=points_baseline, transformation_type='rigid')
+        warped_obstacle_in_5_6_gray_image, _ = cv_utils.warp_image(image=obstacle_in_5_6_gray_image, points_in_image=points_obstacle_in_5_6, points_in_baseline=points_baseline, transformation_type='rigid')
 
     # _, baseline_to_obstacle_in_3_4_diff = compare_ssim(baseline_image, warped_obstacle_in_3_4_image, full=True)
     # baseline_to_obstacle_in_3_4_diff = (baseline_to_obstacle_in_3_4_diff * 255).astype('uint8')
