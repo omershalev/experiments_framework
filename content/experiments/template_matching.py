@@ -5,7 +5,7 @@ import pandas as pd
 
 from framework import cv_utils
 from framework.experiment import Experiment
-
+from computer_vision import segmentation
 
 class TemplateMatchingExperiment(Experiment):
 
@@ -26,6 +26,7 @@ class TemplateMatchingExperiment(Experiment):
         methods = self.params['methods']
         downsample_rate = self.params['downsample_rate']
         localization_resolution = self.params['localization_resolution']
+        use_canopies_masks = self.params['use_canopies_masks']
 
         # Read images
         map_image = cv2.imread(map_image_path)
@@ -33,6 +34,9 @@ class TemplateMatchingExperiment(Experiment):
         upper_left, lower_right = cv_utils.get_bounding_box(map_image, map_semantic_trunks.values(), expand_ratio=bounding_box_expand_ratio)
         map_image = map_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
         localization_image = localization_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
+        if use_canopies_masks:
+            _, map_image = segmentation.extract_canopy_contours(map_image)
+            _, localization_image = segmentation.extract_canopy_contours(localization_image)
         cv2.imwrite(os.path.join(self.experiment_dir, 'map_image.jpg'), map_image)
         cv2.imwrite(os.path.join(self.experiment_dir, 'localization_image.jpg'), localization_image)
 

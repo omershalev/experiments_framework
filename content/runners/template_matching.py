@@ -3,15 +3,18 @@ import json
 
 from framework import utils
 from content.experiments.template_matching import TemplateMatchingExperiment
+from framework import config
+
 
 
 #################################################################################################
 #                                             CONFIG                                            #
 #################################################################################################
-methods = ['TM_CCOEFF', 'TM_CCOEFF_NORMED', 'TM_CCORR', 'TM_CCORR_NORMED', 'TM_SQDIFF', 'TM_SQDIFF_NORMED']
-amcl_experiment_path = r'/home/omer/orchards_ws/results/amcl/20190210-000411_amcl_baseline_different_source_and_target/20190210-000411_amcl_snapshots_for_s_patrol_trajectory_on_15-08-1_and_15-53-1'
+methods = ['TM_CCOEFF', 'TM_CCORR']
+amcl_experiment_path = os.path.join(config.base_results_path, 'amcl', 'apr_basic', '15-08-1_19-04-1', '20190307-071349_amcl_snapshots_for_s_patrol_trajectory_on_15-08-1_and_19-04-1')
 verbose_mode = False
 downsample_rate = 10
+use_canopies_masks = True
 #################################################################################################
 
 
@@ -22,7 +25,7 @@ if __name__ == '__main__':
         amcl_summary = json.load(f)
     map_image_key = amcl_summary['metadata']['map_image_key']
     localization_image_key = amcl_summary['metadata']['localization_image_key']
-    map_image_path = amcl_summary['data_sources']['map_image_path']
+    map_image_path = os.path.join(amcl_experiment_path, 'image_for_map.jpg')
     localization_image_path = os.path.join(amcl_experiment_path, 'aligned_image_for_localization.jpg')
     trajectory = amcl_summary['results']['trajectory']
     map_semantic_trunks = amcl_summary['data_sources']['map_semantic_trunks']
@@ -39,7 +42,8 @@ if __name__ == '__main__':
                                                     'bounding_box_expand_ratio': bounding_box_expand_ratio,
                                                     'methods': methods,
                                                     'downsample_rate': downsample_rate,
-                                                    'localization_resolution': localization_resolution},
+                                                    'localization_resolution': localization_resolution,
+                                                    'use_canopies_masks': use_canopies_masks},
                                             working_dir=execution_dir,
                                             metadata={'amcl_experiment_path': amcl_experiment_path})
     experiment.run(repetitions=1, verbose_mode=verbose_mode)
