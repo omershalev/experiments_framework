@@ -4,8 +4,14 @@ import numpy as np
 import pandas as pd
 
 from framework import cv_utils
+from framework import logger
 from framework.experiment import Experiment
 from computer_vision import segmentation
+
+MESSAGING_FREQUENCY = 100
+
+_logger = logger.get_logger()
+
 
 class TemplateMatchingExperiment(Experiment):
 
@@ -47,6 +53,8 @@ class TemplateMatchingExperiment(Experiment):
         for ugv_pose_idx, ugv_pose in enumerate(trajectory):
             if ugv_pose_idx % downsample_rate != 0:
                 continue
+            if ugv_pose_idx % MESSAGING_FREQUENCY == 0:
+                _logger.info('At point #%d' % ugv_pose_idx)
             roi_image, _, _ = cv_utils.crop_region(localization_image, ugv_pose[0], ugv_pose[1], roi_size, roi_size)
             if verbose_mode:
                 matches_image = map_image.copy()
