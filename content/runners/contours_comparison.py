@@ -45,10 +45,10 @@ if __name__ == '__main__':
     apr_late_afternoon_trunks = apr_late_afternoon_td_summary['results']['1']['semantic_trunks']
     nov_trunks = nov_td_summary['results']['1']['semantic_trunks']
 
-    apr_late_noon_image, _ = cv_utils.warp_image(apr_late_noon_image, apr_late_noon_trunks.values(), apr_noon_trunks.values(), method='affine')
-    apr_afternoon_image, _ = cv_utils.warp_image(apr_afternoon_image, apr_afternoon_trunks.values(), apr_noon_trunks.values(), method='affine')
-    apr_late_afternoon_image, _ = cv_utils.warp_image(apr_late_afternoon_image, apr_late_afternoon_trunks.values(), apr_noon_trunks.values(), method='affine')
-    nov_image, _ = cv_utils.warp_image(nov_image, nov_trunks.values(), apr_noon_trunks.values(), method='affine')
+    apr_late_noon_image, _ = cv_utils.warp_image(apr_late_noon_image, apr_late_noon_trunks.values(), apr_noon_trunks.values(), transformation_type='affine')
+    apr_afternoon_image, _ = cv_utils.warp_image(apr_afternoon_image, apr_afternoon_trunks.values(), apr_noon_trunks.values(), transformation_type='affine')
+    apr_late_afternoon_image, _ = cv_utils.warp_image(apr_late_afternoon_image, apr_late_afternoon_trunks.values(), apr_noon_trunks.values(), transformation_type='affine')
+    nov_image, _ = cv_utils.warp_image(nov_image, nov_trunks.values(), apr_noon_trunks.values(), transformation_type='affine')
     cv2.imwrite(os.path.join(execution_dir, 'apr_noon.jpg'), apr_noon_image)
     cv2.imwrite(os.path.join(execution_dir, 'apr_late_noon.jpg'), apr_late_noon_image)
     cv2.imwrite(os.path.join(execution_dir, 'apr_afternoon.jpg'), apr_afternoon_image)
