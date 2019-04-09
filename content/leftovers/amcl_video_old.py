@@ -30,7 +30,7 @@ class AmclVideoExperiment(Experiment):
         ros_utils.wait_for_rosout_message(node_name='%s/amcl' % namespace, desired_message='Done initializing likelihood field model.')
 
     def _launch_icp(self, namespace):
-        ros_utils.launch(package='localization', launch_file='icp.launch', argv={'ns': namespace})
+        ros_utils.launch(package='localization', launch_file='scan_matcher.launch', argv={'ns': namespace})
 
     def clean_env(self):
         utils.kill_process('amcl')

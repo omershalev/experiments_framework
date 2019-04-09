@@ -24,7 +24,7 @@ if __name__ == '__main__':
     ros_utils.wait_for_rosout_message(node_name='amcl', desired_message='Done initializing likelihood field model.')
 
 
-    ros_utils.launch(package='localization', launch_file='icp.launch')
+    ros_utils.launch(package='localization', launch_file='scan_matcher.launch')
 
     # ros_utils.wait_for_rosout_message(node_name='amcl', message_field='Global initialisation done!')
     # ros_utils.launch(package='localization', launch_file='static_identity_tf.launch',

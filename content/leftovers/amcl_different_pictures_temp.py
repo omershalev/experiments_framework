@@ -36,7 +36,7 @@ if __name__ == '__main__':
     ros_utils.wait_for_rosout_message(node_name='amcl', desired_message='Done initializing likelihood field model.')
 
     # Launch ICP
-    ros_utils.launch(package='localization', launch_file='icp.launch')
+    ros_utils.launch(package='localization', launch_file='scan_matcher.launch')
 
     # Start bag file and wait
     _, bag_duration = ros_utils.play_bag('/home/omer/Downloads/15-53-1_simple_trajectory_2.bag')

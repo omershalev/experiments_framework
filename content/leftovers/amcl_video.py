@@ -31,7 +31,7 @@ if __name__ == '__main__':
     ros_utils.wait_for_rosout_message(node_name='amcl', desired_message='Done initializing likelihood field model.')
 
     # Launch ICP
-    ros_utils.launch(package='localization', launch_file='icp.launch')
+    ros_utils.launch(package='localization', launch_file='scan_matcher.launch')
 
     # Start recording output bag
     ros_utils.start_recording_bag(r'/home/omer/Downloads/video_results.bag',
