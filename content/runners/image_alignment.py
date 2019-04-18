@@ -10,7 +10,7 @@ from content.experiments.image_alignment import ImageAlignmentExperiment
 #################################################################################################
 #                                             CONFIG                                            #
 #################################################################################################
-setup = 'apr' # apr / nov1
+setup = 'apr' # apr / nov1 / nov2
 #################################################################################################
 
 if setup == 'apr':
@@ -19,8 +19,12 @@ if setup == 'apr':
     from content.data_pointers.lavi_april_18.dji import snapshots_80_meters_markers_locations_json_path as markers_json_path
 elif setup == 'nov1':
     from content.data_pointers.lavi_november_18.dji import trunks_detection_results_dir as td_results_dir
-    from content.data_pointers.lavi_november_18.dji import selected_trunks_detection_experiments as selected_td_experiments
-    from content.data_pointers.lavi_november_18.dji import snapshots_80_meters_markers_locations_json_path as markers_json_path
+    from content.data_pointers.lavi_november_18.dji import plot1_selected_trunks_detection_experiments as selected_td_experiments
+    from content.data_pointers.lavi_november_18.dji import plot1_snapshots_80_meters_markers_locations_json_path as markers_json_path
+elif setup == 'nov2':
+    from content.data_pointers.lavi_november_18.dji import trunks_detection_results_dir as td_results_dir
+    from content.data_pointers.lavi_november_18.dji import plot2_selected_trunks_detection_experiments as selected_td_experiments
+    from content.data_pointers.lavi_november_18.dji import plot2_snapshots_80_meters_markers_locations_json_path as markers_json_path
 else:
     raise NotImplementedError
 
