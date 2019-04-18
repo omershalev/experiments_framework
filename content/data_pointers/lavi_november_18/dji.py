@@ -192,7 +192,6 @@ plot4_snapshots_80_meters = {
 plot4_snapshots_80_meters_markers_locations_json_path = os.path.join(markers_locations_path, 'plot4_snapshots_80_meters.json')
 
 trunks_detection_results_dir = os.path.join(config.base_results_path, 'trunks_detection')
-plot1_selected_trunks_detection_experiments = ['trunks_detection_on_nov1_10-09-9', 'trunks_detection_on_nov1_10-10-9',
-                                               'trunks_detection_on_nov1_10-12-1']
-plot2_selected_trunks_detection_experiments = ['trunks_detection_on_nov2_11-07-5', 'trunks_detection_on_nov2_11-07-19',
-                                               'trunks_detection_on_nov2_11-07-22']
+plot1_selected_trunks_detection_experiments = ['trunks_detection_on_nov1_10-09-9', 'trunks_detection_on_nov1_10-10-9']
+plot2_selected_trunks_detection_experiments = ['trunks_detection_on_nov2_11-07-21', 'trunks_detection_on_nov2_11-07-19']
+
