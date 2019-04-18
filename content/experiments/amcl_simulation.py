@@ -89,7 +89,7 @@ class AmclSimulationExperiment(Experiment):
         amcl_pose_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/%s/amcl_pose' % namespace, fields=['pose.pose.position.x', 'pose.pose.position.y'])
         amcl_pose_df.columns = ['amcl_pose_x[%d]' % (self.repetition_id), 'amcl_pose_y[%d]' % (self.repetition_id)]
         def covariance_norm(covariance_mat):
-            return np.linalg.norm(np.array(covariance_mat).reshape(6, 6))
+            return np.linalg.norm(np.array(covariance_mat).reshape(6, 6)[0:2,0:2])
         amcl_covariance_df = ros_utils.bag_to_dataframe(output_bag_path, topic='/%s/amcl_pose' % namespace, fields=['pose.covariance'], aggregation=covariance_norm)
         amcl_covariance_df.columns = ['amcl_covariance_norm[%d]' % (self.repetition_id)]
         ground_truth_df = ground_truth_df[~ground_truth_df.index.duplicated(keep='first')]
@@ -141,7 +141,7 @@ class AmclSimulationExperiment(Experiment):
         std_trunk_radius_for_map = self.params['std_trunk_radius_for_map']
         std_trunk_radius_for_localization = self.params['std_trunk_radius_for_localization']
 
-        # Generate canopies and trunk map images
+        # Generate canopies and trunks map images
         map_image = cv2.imread(origin_map_image_path)
         cv2.imwrite(os.path.join(self.experiment_dir, 'image_for_map.jpg'), map_image)
         canopies_map_image = maps_generation.generate_canopies_map(map_image)
@@ -242,6 +242,7 @@ class AmclSimulationExperiment(Experiment):
         self.results['trunks_valid_scans_rate'] = float(trunks_total_timestamps - trunks_invalid_scans) / trunks_total_timestamps
 
     def epilogue(self):
+
         # Plot graphs and save aggregated dataframes
         canopies_errors, canopies_covariance_norms = self._get_joint_error_and_covariance_norm_dataframes(namespace='canopies')
         canopies_errors.to_csv(os.path.join(self.experiment_dir, 'canopies_errors.csv'))
