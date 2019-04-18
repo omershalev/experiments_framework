@@ -20,11 +20,26 @@ from framework.config import base_results_path
 # original_execution_dirname = os.path.join('apr_basic', '15-53-1_19-04-1')
 # original_execution_dirname = os.path.join('apr_basic', '16-55-1_19-04-1')
 # original_execution_dirname = os.path.join('apr_noises_selected_instances', 'odometry_sigma_x=0.010000')
-original_execution_dirname = os.path.join('apr_noises_selected_instances', 'scan_noise=0.100000')
+# original_execution_dirname = os.path.join('apr_noises_selected_instances', 'scan_noise=0.100000')
+# original_execution_dirname = os.path.join('apr_noises_selected_instances', 'odometry_sigma_x=0.020000')
+# original_execution_dirname = os.path.join('apr_noises_selected_instances', 'scan_noise=0.200000')
+# original_execution_dirname = os.path.join('apr_noises_selected_instances', 'odometry_sigma_x=0.030000')
+# original_execution_dirname = os.path.join('apr_noises_selected_instances', 'scan_noise=0.300000')
+# original_execution_dirname = os.path.join('apr_noises_selected_instances', 'odometry_sigma_x=0.040000')
+# original_execution_dirname = os.path.join('apr_noises_selected_instances', 'scan_noise=0.400000')
+# original_execution_dirname = os.path.join('apr_noises_selected_instances', 'odometry_sigma_x=0.050000')
+# original_execution_dirname = os.path.join('apr_noises_selected_instances', 'scan_noise=0.500000')
+# original_execution_dirname = os.path.join('apr_noises_selected_instances', 'odometry_mu_x=0.001000')
+# original_execution_dirname = os.path.join('apr_noises_selected_instances', 'odometry_mu_x=0.002000')
+# original_execution_dirname = os.path.join('apr_noises_selected_instances', 'odometry_mu_x=0.003000')
+# original_execution_dirname = os.path.join('apr_noises_selected_instances', 'odometry_mu_x=0.004000')
+# original_execution_dirname = os.path.join('apr_noises_selected_instances', 'odometry_mu_x=0.005000')
+# original_execution_dirname = os.path.join('nov1_basic')
+original_execution_dirname = os.path.join('nov2_basic')
 parameters_to_compare = None # ['min_amcl_particles', 'max_distance'] # if None, don't compare
 error_band_width = 1
 confidence_band_width = 1
-plot = False
+plot = True
 #################################################################################################
 
 
