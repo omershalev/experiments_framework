@@ -15,61 +15,66 @@ ExperimentConfig = namedtuple('ExperimentConfig', ['odometry_noise_mu_x', 'odome
                                                    'scan_noise_sigma', 'min_amcl_particles'])
 
 
-def odometry_skid_x_configs_factory():
-    return [ExperimentConfig(odometry_noise_mu_x=0,
-                             odometry_noise_mu_y=0,
-                             odometry_noise_sigma_x=sigma_x,
-                             odometry_noise_sigma_y=0,
-                             scan_noise_sigma=0,
-                             # min_amcl_particles=2500) for sigma_x in np.logspace(start=0, stop=1, num=10, base=0.01)]
-                             min_amcl_particles=1000) for sigma_x in [2, 1, 0.5, 0.1]]
-
-
-def odometry_skid_and_drift_x_configs_factory(sigma_x):
-    return [ExperimentConfig(odometry_noise_mu_x=mu_x,
-                             odometry_noise_mu_y=0,
-                             odometry_noise_sigma_x=sigma_x,
-                             odometry_noise_sigma_y=0,
-                             scan_noise_sigma=0,
-                             min_amcl_particles=1000) for mu_x in np.logspace(start=0, stop=1, num=10, base=0.001)]
-
-
-def scan_noise_configs_factory():
-    return [ExperimentConfig(odometry_noise_mu_x=0,
-                             odometry_noise_mu_y=0,
-                             odometry_noise_sigma_x=0,
-                             odometry_noise_sigma_y=0,
-                             scan_noise_sigma=sigma,
-                             # min_amcl_particles=2500) for sigma in np.logspace(start=0, stop=1, num=10, base=0.01)]
-                             # min_amcl_particles=2500) for sigma in [2, 1, 0.5, 0.1]]
-                             # min_amcl_particles=1000) for sigma in [0.4, 0.5, 0.6, 0.7, 0.8]] # this is the interesting one
-                             min_amcl_particles=1000) for sigma in [0.3, 0.4, 0.5, 0.6]]
-                             # 0.9 and 1 diverge, 0.5 almost converged
-
-
-def min_amcl_particles_configs_factory():
-    return [ExperimentConfig(odometry_noise_mu_x=0,
-                             odometry_noise_mu_y=0,
-                             odometry_noise_sigma_x=0,
-                             odometry_noise_sigma_y=0,
-                             scan_noise_sigma=0,
-                             # min_amcl_particles=int(particles)) for particles in [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000]]
-                             min_amcl_particles=int(particles)) for particles in [50, 100, 200, 300]]
-# TODO: start at 250!!
 #################################################################################################
 #                                             CONFIG                                            #
 #################################################################################################
-description = '250_noises'
+description = 'amcl'
 repetitions = 10
 different_localization_and_mapping_sources = True
+# experiment_configs_list = [
+#     ExperimentConfig(odometry_noise_mu_x=0.001,
+#                      odometry_noise_mu_y=0,
+#                      odometry_noise_sigma_x=0.01,
+#                      odometry_noise_sigma_y=0,
+#                      scan_noise_sigma=0,
+#                      min_amcl_particles=1000),
+#     ExperimentConfig(odometry_noise_mu_x=0.002,
+#                      odometry_noise_mu_y=0,
+#                      odometry_noise_sigma_x=0.01,
+#                      odometry_noise_sigma_y=0,
+#                      scan_noise_sigma=0,
+#                      min_amcl_particles=1000),
+#     ExperimentConfig(odometry_noise_mu_x=0.003,
+#                      odometry_noise_mu_y=0,
+#                      odometry_noise_sigma_x=0.01,
+#                      odometry_noise_sigma_y=0,
+#                      scan_noise_sigma=0,
+#                      min_amcl_particles=1000),
+#     ExperimentConfig(odometry_noise_mu_x=0.004,
+#                      odometry_noise_mu_y=0,
+#                      odometry_noise_sigma_x=0.01,
+#                      odometry_noise_sigma_y=0,
+#                      scan_noise_sigma=0,
+#                      min_amcl_particles=1000),
+#     ExperimentConfig(odometry_noise_mu_x=0.005,
+#                      odometry_noise_mu_y=0,
+#                      odometry_noise_sigma_x=0.01,
+#                      odometry_noise_sigma_y=0,
+#                      scan_noise_sigma=0,
+#                      min_amcl_particles=1000),
+#                            ]
 experiment_configs_list = [ExperimentConfig(odometry_noise_mu_x=0,
                                             odometry_noise_mu_y=0,
                                             odometry_noise_sigma_x=0,
                                             odometry_noise_sigma_y=0,
                                             scan_noise_sigma=0,
                                             min_amcl_particles=1000)]
-# experiment_configs_list = scan_noise_configs_factory() + odometry_skid_x_configs_factory()
-first_sample_only = True
+# selected_experiments = [
+#     ('15-08-1', '15-53-1', 's_patrol'),  # so so
+#     ('15-08-1', '15-53-1', 'wide_row'),  # so so
+#     ('15-08-1', '19-04-1', 's_patrol'),  # so so
+#     # ('15-53-1', '16-55-1', 'narrow_row'),  # so so
+#     ('15-53-1', '16-55-1', 'u_turns'),
+#     ('15-53-1', '16-55-1', 'wide_row'),  # so so
+#     # ('15-53-1', '19-04-1', 'narrow_row'),  # here the canopies fail
+#     ('15-53-1', '19-04-1', 'tasks_and_interrupts'),  # so so
+#     ('15-53-1', '19-04-1', 'u_turns'),  # so so
+#     ('16-55-1', '19-04-1', 'narrow_row'),
+#     ('16-55-1', '19-04-1', 's_patrol'),  # so so
+#     ('16-55-1', '19-04-1', 'wide_row'),  # so so
+# ]
+selected_experiments = None
+first_sample_only = False
 first_trajectory_only = False
 setup = 'apr' # apr / nov1 / nov2
 #################################################################################################
@@ -89,7 +94,12 @@ elif setup == 'nov1':
     from content.data_pointers.lavi_november_18.orchard_topology import plot1_measured_intra_row_distances as measured_intra_row_distances
     from content.data_pointers.lavi_november_18.orchard_topology import plot1_trajectories as trajectories
 elif setup == 'nov2':
-    raise NotImplementedError # TODO: implement
+    from content.data_pointers.lavi_november_18.dji import trunks_detection_results_dir as td_results_dir
+    from content.data_pointers.lavi_november_18.dji import plot2_selected_trunks_detection_experiments as selected_td_experiments
+    from content.data_pointers.lavi_november_18.orchard_topology import plot2_measured_trunks_perimeters as measured_trunks_perimeters
+    from content.data_pointers.lavi_november_18.orchard_topology import plot2_measured_row_widths as measured_row_widths
+    from content.data_pointers.lavi_november_18.orchard_topology import plot2_measured_intra_row_distances as measured_intra_row_distances
+    from content.data_pointers.lavi_november_18.orchard_topology import plot2_trajectories as trajectories
 
 
 if __name__ == '__main__':
@@ -138,6 +148,9 @@ if __name__ == '__main__':
             localization_external_trunks = []
         for experiment_config in experiment_configs_list:
             for trajectory_name in trajectories.keys():
+                if selected_experiments is not None:
+                    if (map_image_key, localization_image_key, trajectory_name) not in selected_experiments:
+                        continue
                 experiment = AmclSimulationExperiment(name='amcl_snapshots_for_%s_trajectory_on_%s' %
                                                            (trajectory_name, (map_image_key if not different_localization_and_mapping_sources else '%s_and_%s' % (map_image_key, localization_image_key))),
                                                       data_sources={'map_image_path': map_image_path, 'localization_image_path': localization_image_path,
