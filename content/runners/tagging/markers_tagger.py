@@ -5,9 +5,11 @@ import json
 from framework import cv_utils
 from framework import viz_utils
 from framework import config
-from content.data_pointers.lavi_april_18 import dji
+# from content.data_pointers.lavi_april_18 import dji
+from content.data_pointers.lavi_november_18 import dji
 
-data_dicts_list = {'snapshots_60_meters': dji.snapshots_60_meters, 'snapshots_80_meters': dji.snapshots_80_meters}
+# data_dicts_list = {'plot3_snapshots_60_meters': dji.plot3_snapshots_60_meters, 'plot3_snapshots_80_meters': dji.plot3_snapshots_80_meters}
+data_dicts_list = {'plot4_snapshots_80_meters': dji.plot4_snapshots_80_meters}
 
 if __name__ == '__main__':
     for data_dict_name, data_dict in data_dicts_list.items():
