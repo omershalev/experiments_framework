@@ -55,7 +55,13 @@ class AmclVideoExperiment(Experiment):
         map_image = cv2.imread(map_image_path)
         cv2.imwrite(os.path.join(self.experiment_dir, 'image_for_map.jpg'), map_image)
         canopies_map_image = maps_generation.generate_canopies_map(map_image)
-        upper_left, lower_right = cv_utils.get_bounding_box(canopies_map_image, map_semantic_trunks.values(), expand_ratio=bounding_box_expand_ratio)
+        lower_boundaries = [
+            [canopies_map_image.shape[0] - 600, min([trunk[0] for trunk in map_semantic_trunks.values()])],
+            [canopies_map_image.shape[0] - 600, max([trunk[0] for trunk in map_semantic_trunks.values()])]
+        ]
+        # upper_left, lower_right = cv_utils.get_bounding_box(canopies_map_image, map_semantic_trunks.values() + lower_boundaries, expand_ratio=bounding_box_expand_ratio)
+        upper_left = (700, 700)
+        lower_right = (3200, 2700)
         canopies_map_image = canopies_map_image[upper_left[1]:lower_right[1], upper_left[0]:lower_right[0]]
         canopies_map_yaml_path, _ = ros_utils.save_image_to_map(canopies_map_image, resolution=map_resolution,
                                                                 map_name='canopies_map', dir_name=self.experiment_dir)
@@ -97,22 +103,22 @@ if __name__ == '__main__':
 
     execution_dir = utils.create_new_execution_folder('amcl_video')
 
-    td_exp_name_for_map = 'manual_apr_15-08-1'
+    td_exp_name_for_map = 'trunks_detection_on_apr_16-55-1'
     with open(os.path.join(td_results_dir, td_exp_name_for_map, 'experiment_summary.json')) as f:
         td_summary_for_map = json.load(f)
     image_path = td_summary_for_map['data_sources']
-    map_semantic_trunks = td_summary_for_map['results']['0']['semantic_trunks']
-    pixel_to_meter_ratio_for_map = calibration.calculate_pixel_to_meter(td_summary_for_map['results']['0']['optimized_grid_dim_x'],
-                                                                        td_summary_for_map['results']['0']['optimized_grid_dim_y'],
+    map_semantic_trunks = td_summary_for_map['results']['1']['semantic_trunks']
+    pixel_to_meter_ratio_for_map = calibration.calculate_pixel_to_meter(td_summary_for_map['results']['1']['optimized_grid_dim_x'],
+                                                                        td_summary_for_map['results']['1']['optimized_grid_dim_y'],
                                                                         orchard_topology.measured_row_widths,
                                                                         orchard_topology.measured_intra_row_distances)
-    map_resolution = 1.0 / pixel_to_meter_ratio_for_map
+    map_resolution = (1.0 / pixel_to_meter_ratio_for_map) * 1.5
     experiment = AmclVideoExperiment(name='amcl_video',
                                      data_sources={'map_image_path': image_path, 'map_semantic_trunks': map_semantic_trunks,
                                                    'scans_and_poses_pickle_path': os.path.join(base_resources_path, 'amcl_video', 'scans_and_poses.pkl'),
                                                    'odom_pickle_path': os.path.join(base_resources_path, 'amcl_video', 'ugv_odometry.pkl'),
                                                    'video_path':os.path.join(base_raw_data_path, 'dji', 'DJI_0167.MP4')},
-                                     params={'bounding_box_expand_ratio': config.bounding_box_expand_ratio, 'map_resolution': map_resolution,
-                                             'min_amcl_particles': 2000},
+                                     params={'bounding_box_expand_ratio': 0.05, 'map_resolution': map_resolution,
+                                             'min_amcl_particles': 1000},
                                      working_dir=execution_dir)
     experiment.run(repetitions=1, launch_rviz=True)

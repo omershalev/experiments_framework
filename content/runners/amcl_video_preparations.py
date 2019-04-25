@@ -13,7 +13,7 @@ from content.data_pointers.lavi_april_18 import orchard_topology
 from framework import config
 from framework import cv_utils
 from computer_vision import segmentation
-from computer_vision import trunks_detection
+from content.leftovers import trunks_detection_old_cv
 from computer_vision import maps_generation
 from computer_vision import calibration
 from computer_vision.contours_scan_cython import contours_scan
@@ -67,9 +67,9 @@ def estimate_resolution(images_dir):
     grid_dim_y_values = []
     for image_filename in os.listdir(images_dir):
         image = cv2.imread(os.path.join(images_dir, image_filename))
-        orientation = trunks_detection.estimate_rows_orientation(image)
-        _, rotated_centroids, _, _ = trunks_detection.find_tree_centroids(image, correction_angle=orientation * (-1))
-        grid_dim_x, grid_dim_y = trunks_detection.estimate_grid_dimensions(rotated_centroids)
+        orientation = trunks_detection_old_cv.estimate_rows_orientation(image)
+        _, rotated_centroids, _, _ = trunks_detection_old_cv.find_tree_centroids(image, correction_angle=orientation * (-1))
+        grid_dim_x, grid_dim_y = trunks_detection_old_cv.estimate_grid_dimensions(rotated_centroids)
         grid_dim_x_values.append(grid_dim_x)
         grid_dim_y_values.append(grid_dim_y)
     return 1.0 / calibration.calculate_pixel_to_meter(np.mean(grid_dim_x_values), np.mean(grid_dim_y_values),
