@@ -28,7 +28,7 @@ git clone https://github.com/omershalev/experiments_framework
 catkin_make
 ```
 
-Global configuration is in the [config file](framework/config.py). Pointers to the data is configured in [data_pointers](content/data_pointer) (see [Lavi-April](content/data_pointers/lavi_april_18) for reference).
+Global configuration is in the [config file](framework/config.py). Pointers to the data is configured in [data_pointers](content/data_pointers) (see [Lavi-April](content/data_pointers/lavi_april_18) for reference).
 
 ## How to run an experiment
 All experiments have an associated runner model under [runners](content/runners/). Experiment configuration is done in the runner file.
