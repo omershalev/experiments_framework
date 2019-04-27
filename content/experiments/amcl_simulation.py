@@ -1,4 +1,5 @@
 import time
+import json
 import pickle
 import os
 import cv2
@@ -15,6 +16,18 @@ from framework import config
 from content.experiments.path_planning import PathPlanningExperiment
 from computer_vision import maps_generation
 from computer_vision import offline_synthetic_scan_generator
+
+
+# canopies_scans_pickle_path = r'/home/omer/orchards_ws/results/amcl/apr_basic/15-53-1_16-55-1/amcl_snapshots_for_s_patrol_trajectory_on_15-53-1_and_16-55-1/canopies_scan.pkl'
+# trunks_scans_pickle_path = r'/home/omer/orchards_ws/results/amcl/apr_basic/15-53-1_16-55-1/amcl_snapshots_for_s_patrol_trajectory_on_15-53-1_and_16-55-1/trunks_scan.pkl'
+# path_planning_experiment_summary_path = r'/home/omer/orchards_ws/results/amcl/apr_basic/15-53-1_16-55-1/amcl_snapshots_for_s_patrol_trajectory_on_15-53-1_and_16-55-1/20190310-081539_path_planning/experiment_summary.json'
+# canopies_scans_pickle_path = r'/home/omer/orchards_ws/results/amcl/apr_basic/16-55-1_19-04-1/amcl_snapshots_for_tasks_and_interrupts_trajectory_on_16-55-1_and_19-04-1/canopies_scan.pkl'
+# trunks_scans_pickle_path = r'/home/omer/orchards_ws/results/amcl/apr_basic/16-55-1_19-04-1/amcl_snapshots_for_tasks_and_interrupts_trajectory_on_16-55-1_and_19-04-1/trunks_scan.pkl'
+# path_planning_experiment_summary_path = r'/home/omer/orchards_ws/results/amcl/apr_basic/16-55-1_19-04-1/amcl_snapshots_for_tasks_and_interrupts_trajectory_on_16-55-1_and_19-04-1/20190310-172706_path_planning/experiment_summary.json'
+canopies_scans_pickle_path = r'/home/omer/orchards_ws/results/amcl/apr_basic/15-08-1_19-04-1/amcl_snapshots_for_s_patrol_trajectory_on_15-08-1_and_19-04-1/canopies_scan.pkl'
+trunks_scans_pickle_path = r'/home/omer/orchards_ws/results/amcl/apr_basic/15-08-1_19-04-1/amcl_snapshots_for_s_patrol_trajectory_on_15-08-1_and_19-04-1/trunks_scan.pkl'
+path_planning_experiment_summary_path = r'/home/omer/orchards_ws/results/amcl/apr_basic/15-08-1_19-04-1/amcl_snapshots_for_s_patrol_trajectory_on_15-08-1_and_19-04-1/20190310-050823_path_planning/experiment_summary.json'
+
 
 class AmclSimulationExperiment(Experiment):
 
@@ -75,7 +88,7 @@ class AmclSimulationExperiment(Experiment):
                          argv={'min_angle': self.params['min_angle'],
                                'max_angle': self.params['max_angle'],
                                'resolution': self.params['localization_resolution'],
-                               'window_size': int(self.params['max_distance'] * 1.3),
+                               'window_size': int(self.params['max_distance'] * 2.5),
                                'canopies_image_path': self.viz_image_path,
                                'trunks_image_path': self.trunks_localization_image_path,
                                'canopies_scans_pickle_path': self.canopies_scans_pickle_path,
@@ -200,13 +213,18 @@ class AmclSimulationExperiment(Experiment):
                 waypoints_coordinates.append(((point1[0] + point2[0]) / 2, (point1[1] + point2[1]) / 2))
             else:
                 waypoints_coordinates.append(localization_semantic_trunks[waypoint])
-        path_planning_experiment = PathPlanningExperiment(name='path_planning',
-                                                          data_sources={'map_image_path': image_for_trajectory_path,
-                                                                        'map_upper_left': upper_left, 'map_lower_right': lower_right,
-                                                                        'waypoints': waypoints_coordinates},
-                                                          working_dir=self.experiment_dir, metadata=self.metadata)
-        path_planning_experiment.run(repetitions=1)
-        self.results['trajectory'] = path_planning_experiment.results[1]['trajectory']
+        if path_planning_experiment_summary_path is not None:
+            with open(path_planning_experiment_summary_path) as f:
+                path_planning_experiment = json.load(f)
+            self.results['trajectory'] = path_planning_experiment['results']['1']['trajectory']
+        else:
+            path_planning_experiment = PathPlanningExperiment(name='path_planning',
+                                                              data_sources={'map_image_path': image_for_trajectory_path,
+                                                                            'map_upper_left': upper_left, 'map_lower_right': lower_right,
+                                                                            'waypoints': waypoints_coordinates},
+                                                              working_dir=self.experiment_dir, metadata=self.metadata)
+            path_planning_experiment.run(repetitions=1)
+            self.results['trajectory'] = path_planning_experiment.results[1]['trajectory']
         trajectory = self.results['trajectory']
         freq = self.params['target_frequency']
         epsilon_t = 1e-3
@@ -216,18 +234,24 @@ class AmclSimulationExperiment(Experiment):
         ros_utils.trajectory_to_bag(pose_time_tuples_list, self.trajectory_bag_path)
 
         # Generate scan offline
-        self.canopies_scans_pickle_path = os.path.join(self.experiment_dir, 'canopies_scan.pkl')
-        offline_synthetic_scan_generator.generate_scans_pickle(self.trajectory_bag_path, canopies_localization_image, self.params['min_angle'],
-                                                               self.params['max_angle'], self.params['samples_num'], self.params['min_distance'],
-                                                               self.params['max_distance'], self.params['localization_resolution'],
-                                                               self.params['r_primary_search_samples'], self.params['r_secondary_search_step'],
-                                                               output_pickle_path=self.canopies_scans_pickle_path)
-        self.trunks_scans_pickle_path = os.path.join(self.experiment_dir, 'trunks_scan.pkl')
-        offline_synthetic_scan_generator.generate_scans_pickle(self.trajectory_bag_path, trunks_localization_image, self.params['min_angle'],
-                                                               self.params['max_angle'], self.params['samples_num'], self.params['min_distance'],
-                                                               self.params['max_distance'], self.params['localization_resolution'],
-                                                               self.params['r_primary_search_samples'], self.params['r_secondary_search_step'],
-                                                               output_pickle_path=self.trunks_scans_pickle_path)
+        if canopies_scans_pickle_path is not None:
+            self.canopies_scans_pickle_path = canopies_scans_pickle_path
+        else:
+            self.canopies_scans_pickle_path = os.path.join(self.experiment_dir, 'canopies_scan.pkl')
+            offline_synthetic_scan_generator.generate_scans_pickle(self.trajectory_bag_path, canopies_localization_image, self.params['min_angle'],
+                                                                   self.params['max_angle'], self.params['samples_num'], self.params['min_distance'],
+                                                                   self.params['max_distance'], self.params['localization_resolution'],
+                                                                   self.params['r_primary_search_samples'], self.params['r_secondary_search_step'],
+                                                                   output_pickle_path=self.canopies_scans_pickle_path)
+        if trunks_scans_pickle_path is not None:
+            self.trunks_scans_pickle_path = trunks_scans_pickle_path
+        else:
+            self.trunks_scans_pickle_path = os.path.join(self.experiment_dir, 'trunks_scan.pkl')
+            offline_synthetic_scan_generator.generate_scans_pickle(self.trajectory_bag_path, trunks_localization_image, self.params['min_angle'],
+                                                                   self.params['max_angle'], self.params['samples_num'], self.params['min_distance'],
+                                                                   self.params['max_distance'], self.params['localization_resolution'],
+                                                                   self.params['r_primary_search_samples'], self.params['r_secondary_search_step'],
+                                                                   output_pickle_path=self.trunks_scans_pickle_path)
 
         # Calculate valid scans rate
         with open(self.canopies_scans_pickle_path) as f:
@@ -294,6 +318,8 @@ class AmclSimulationExperiment(Experiment):
 
         if launch_rviz:
             self._launch_contours_visualization()
+            ros_utils.play_image_to_topic(image_path=self.data_sources['map_image_path'],
+                                          topic='map_image', frame_id='map', fps=config.target_system_frequency)
 
         # Start recording output bag
         output_bag_path = os.path.join(self.repetition_dir, '%s_output.bag' % self.name)

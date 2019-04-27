@@ -34,10 +34,18 @@ if __name__ == '__main__':
     canopies_mask_with_contours = cv2.cvtColor(canopies_mask.copy(), cv2.COLOR_GRAY2BGR)
     cv2.drawContours(canopies_mask_with_contours, contours, contourIdx=-1, color=(0, 255, 0), thickness=5)
     canopies_mask_with_trunks = cv2.cvtColor(canopies_mask.copy(), cv2.COLOR_GRAY2BGR)
-    canopies_mask_with_trunks = cv_utils.draw_points_on_image(canopies_mask_with_trunks, td_summary['results']['1']['semantic_trunks'].values(), color=(0, 200, 0))
+    canopies_mask_with_trunks = cv_utils.draw_points_on_image(canopies_mask_with_trunks, td_summary['results']['1']['semantic_trunks'].values(), color=(0, 220, 0))
+    canopies_mask_with_labeled_trunks = canopies_mask_with_trunks.copy()
+    for trunk_label, trunk_pose in td_summary['results']['1']['semantic_trunks'].items():
+        canopies_mask_with_labeled_trunks = cv_utils.put_shaded_text_on_image(canopies_mask_with_labeled_trunks,
+                                                                              label=trunk_label,
+                                                                              location=trunk_pose,
+                                                                              color=(0, 220, 0),
+                                                                              offset=(15, 15))
 
     cv2.imwrite(os.path.join(execution_dir, 'image.jpg'), image)
     cv2.imwrite(os.path.join(execution_dir, 'canopies_mask.jpg'), canopies_mask)
     cv2.imwrite(os.path.join(execution_dir, 'image_with_contours.jpg'), image_with_contours)
     cv2.imwrite(os.path.join(execution_dir, 'canopies_mask_with_contours.jpg'), canopies_mask_with_contours)
     cv2.imwrite(os.path.join(execution_dir, 'canopies_mask_with_trunks.jpg'), canopies_mask_with_trunks)
+    cv2.imwrite(os.path.join(execution_dir, 'canopies_mask_with_labeled_trunks.jpg'), canopies_mask_with_labeled_trunks)

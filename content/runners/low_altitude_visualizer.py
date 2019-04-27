@@ -41,9 +41,10 @@ if __name__ == '__main__':
     cap = cv2.VideoCapture(video_path)
     sz = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
           int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-    fourcc = cv2.VideoWriter_fourcc(*'mpeg')
+    # fourcc = cv2.VideoWriter_fourcc(*'mpeg')
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')
     out = cv2.VideoWriter()
-    out.open(r'/home/omer/Documents/tracking_output.mp4', fourcc, 30.0, sz, True)
+    out.open(r'/home/omer/Documents/tracking_output_avc1.mp4', fourcc, 30.0, sz, True)
     if not cap.isOpened():
         raise Exception('Error opening video stream')
     frame_idx = 0

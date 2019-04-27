@@ -9,9 +9,12 @@ if __name__ == '__main__':
     cap = cv2.VideoCapture(video_path)
     sz = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
           int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-    fourcc = cv2.VideoWriter_fourcc(*'mpeg')
+    # fourcc = cv2.VideoWriter_fourcc(*'mpeg')
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')
+    # fourcc = cv2.VideoWriter_fourcc(*'WMV2')
     out = cv2.VideoWriter()
-    out.open(r'/home/omer/Documents/takeoff_output.mp4', fourcc, 30.0, sz, True)
+    out.open(r'/home/omer/Documents/takeoff_output_avc1.mp4', fourcc, 30.0, sz, True)
+    # out.open(r'/home/omer/Documents/takeoff_output.wmv', fourcc, 30.0, sz, True)
     frame_rate = cap.get(cv2.CAP_PROP_FPS)
     frame_msec = 1000.0 / frame_rate
     frames_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)

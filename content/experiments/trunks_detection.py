@@ -105,6 +105,8 @@ class TrunksDetectionExperiment(Experiment):
         plt.savefig(os.path.join(self.repetition_dir, 'slice_row_sums.jpg'))
         vertical_rows_centroids_image = cv_utils.draw_points_on_image(vertical_rows_image, itertools.chain.from_iterable(rotated_centroids), color=(0, 0, 255))
         cv2.imwrite(os.path.join(self.repetition_dir, 'vertical_rows_centroids.jpg'), vertical_rows_centroids_image)
+        centroids_image = cv_utils.draw_points_on_image(cropped_image, centroids, color=(0, 0, 255))
+        cv2.imwrite(os.path.join(self.repetition_dir, 'centroids.jpg'), centroids_image)
         if viz_mode:
             viz_utils.show_image('vertical rows aisle centers', vertical_rows_aisle_centers_image)
             viz_utils.show_image('vertical rows centroids', vertical_rows_centroids_image)
@@ -125,8 +127,8 @@ class TrunksDetectionExperiment(Experiment):
         margin = essential_grid_shape * 0.2
         essential_grid_shifted = [tuple(elem) for elem in np.array(essential_grid) - np.min(essential_grid, axis=0) + margin / 2]
         estimated_grid_image = np.full((int(essential_grid_shape[1] + margin[1]), int(essential_grid_shape[0] + margin[0]), 3), 255, dtype=np.uint8)
-        estimated_grid_image = cv_utils.draw_points_on_image(estimated_grid_image, essential_grid_shifted, color=(255, 0, 0))
-        cv2.imwrite(os.path.join(self.repetition_dir, 'estimated_grid.jpg'), estimated_grid_image)
+        estimated_grid_image = cv_utils.draw_points_on_image(estimated_grid_image, essential_grid_shifted, color=(255, 90, 0), radius=25)
+        cv2.imwrite(os.path.join(self.repetition_dir, 'estimated_grid.png'), estimated_grid_image)
         if viz_mode:
             viz_utils.show_image('estimated grid', estimated_grid_image)
 
@@ -134,7 +136,8 @@ class TrunksDetectionExperiment(Experiment):
         positioned_grid, translation, drift_vectors = trunks_detection.find_min_mse_position(centroids, essential_grid, cropped_image.shape[1], cropped_image.shape[0])
         if positioned_grid is None:
             raise ExperimentFailure
-        positioned_grid_image = cv_utils.draw_points_on_image(cropped_image, positioned_grid, color=(255, 0, 0), radius=25)
+        positioned_grid_image = cv_utils.draw_points_on_image(cropped_image, positioned_grid, color=(255, 90, 0), radius=25)
+        cv2.imwrite(os.path.join(self.repetition_dir, 'positioned_grid_only.jpg'), positioned_grid_image)
         positioned_grid_image = cv_utils.draw_points_on_image(positioned_grid_image, centroids, color=(0, 0, 255))
         positioned_grid_image = cv_utils.draw_lines_on_image(positioned_grid_image, drift_vectors, color=(255, 255, 0), thickness=3)
         cv2.imwrite(os.path.join(self.repetition_dir, 'positioned_grid.jpg'), positioned_grid_image)
@@ -169,7 +172,7 @@ class TrunksDetectionExperiment(Experiment):
                                             'optimized_shear': optimized_shear,
                                             'optimized_sigma': optimized_sigma}
         optimized_grid_image = cv_utils.draw_points_on_image(cropped_image, optimized_grid, color=(0, 255, 0))
-        optimized_grid_image = cv_utils.draw_points_on_image(optimized_grid_image, positioned_grid, color=(255, 0, 0))
+        optimized_grid_image = cv_utils.draw_points_on_image(optimized_grid_image, positioned_grid, color=(255, 90, 0))
         cv2.imwrite(os.path.join(self.repetition_dir, 'optimized_square_grid.jpg'), optimized_grid_image)
         if verbose_mode:
             os.mkdir(os.path.join(self.repetition_dir, 'nelder_mead_steps'))

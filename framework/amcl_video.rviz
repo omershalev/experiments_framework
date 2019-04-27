@@ -24,7 +24,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: canopies scan
+    SyncSource: ""
 Visualization Manager:
   Class: ""
   Displays:
@@ -148,11 +148,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Scale: 9.89223289
+      Scale: 9.6093874
       Target Frame: <Fixed Frame>
       Value: TopDownOrtho (rviz)
-      X: 43.4338303
-      Y: 33.9954033
+      X: 51.6492538
+      Y: 40.4215698
     Saved: ~
 Window Geometry:
   Displays:

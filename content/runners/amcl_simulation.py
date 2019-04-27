@@ -73,7 +73,10 @@ experiment_configs_list = [ExperimentConfig(odometry_noise_mu_x=0,
 #     ('16-55-1', '19-04-1', 's_patrol'),  # so so
 #     ('16-55-1', '19-04-1', 'wide_row'),  # so so
 # ]
-selected_experiments = None
+# selected_experiments = [('15-53-1', '16-55-1', 's_patrol')]
+# selected_experiments = [('16-55-1', '19-04-1', 'tasks_and_interrupts')]
+selected_experiments = [('15-08-1', '19-04-1', 's_patrol')]
+# selected_experiments = None
 first_sample_only = False
 first_trajectory_only = False
 setup = 'apr' # apr / nov1 / nov2
