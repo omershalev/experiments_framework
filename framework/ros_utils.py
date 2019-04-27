@@ -209,6 +209,24 @@ def play_video_to_topic(video_path, topic, frame_id):
     p.join()
 
 
+def play_image_to_topic(image_path, topic, frame_id, fps):
+    class _ImagePlayer(object):
+        def __init__(self, image_path, topic, ros_frame_id, fps):
+            rospy.init_node('image_player')
+            pub = rospy.Publisher(topic, Image, queue_size=1)
+            image = cv2.imread(image_path)
+            cv_bridge = CvBridge()
+            delay = 1.0 / fps
+            while not rospy.is_shutdown():
+                message = cv_bridge.cv2_to_imgmsg(image, encoding='bgr8')
+                message.header.frame_id = ros_frame_id
+                time.sleep(delay)
+                pub.publish(message)
+
+    p = Process(target=_ImagePlayer, args=(image_path, topic, frame_id, fps))
+    p.start()
+
+
 def trajectory_to_bag(pose_time_tuples_list, bag_path, topic='ugv_pose'):
     bag = rosbag.Bag(bag_path, 'w')
     for pose_time in pose_time_tuples_list:
